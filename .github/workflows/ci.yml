@@ -7,7 +7,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-   
+
     env:
       POSTGRES_USER:     easycamper
       POSTGRES_PASSWORD: secret123
@@ -44,7 +44,7 @@ jobs:
         run: npm ci
 
       - name: Wait for Postgres to be ready
-        run: npx wait-on tcp:postgres:5432
+        run: npx wait-on tcp:localhost:5432 --timeout 60s
 
       - name: Run migrations
         working-directory: server
