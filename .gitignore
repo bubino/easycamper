@@ -1,3 +1,6 @@
+# annullo qualsiasi regola che escluda server/
+!/server/
+!/server/**
 # Miscellaneous
 *.class
 *.log
