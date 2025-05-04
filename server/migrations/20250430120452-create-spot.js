@@ -1,46 +1,53 @@
+// server/migrations/20250430120452-create-spot.js
 'use strict';
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up(queryInterface, Sequelize) {
+  async up (queryInterface, Sequelize) {
     await queryInterface.createTable('Spots', {
       id: {
         allowNull: false,
-        autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
-      },
-      id: {
         type: Sequelize.STRING
+      },
+      userId: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        references: {
+          model: 'Users',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       name: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false
       },
-      coords: {
-        type: Sequelize.JSONB
+      description: {
+        type: Sequelize.TEXT
       },
-      services: {
-        type: Sequelize.JSONB
+      latitude: {
+        type: Sequelize.FLOAT,
+        allowNull: false
       },
-      availability: {
-        type: Sequelize.STRING
-      },
-      rating: {
-        type: Sequelize.FLOAT
-      },
-      images: {
-        type: Sequelize.JSONB
+      longitude: {
+        type: Sequelize.FLOAT,
+        allowNull: false
       },
       createdAt: {
         allowNull: false,
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.fn('NOW')
       },
       updatedAt: {
         allowNull: false,
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.fn('NOW')
       }
     });
   },
-  async down(queryInterface, Sequelize) {
+
+  async down (queryInterface, Sequelize) {
     await queryInterface.dropTable('Spots');
   }
 };
