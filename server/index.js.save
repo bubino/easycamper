@@ -1,0 +1,156 @@
+require('dotenv').config();
+const express = require('express');
+const { Sequelize, DataTypes } = require('sequelize');
+
+// Helper per gestire errori negli async handler
+function asyncHandler(fn) {
+  return function(req, res, next) {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
+// Configurazione Sequelize (usa .env + fallback)
+const sequelize = new Sequelize(
+  process.env.POSTGRES_DB  || 'easycamper',
+  process.env.POSTGRES_USER|| 'easycamper',
+  process.env.POSTGRES_PASSWORD || 'secret123',
+  {
+    host: process.env.POSTGRES_HOST || 'localhost',
+    port: process.env.POSTGRES_PORT || 5432,
+    dialect: 'postgres',
+    logging: false
+  }
+);
+
+// Definizione modelli
+const Vehicle = sequelize.define('Vehicle', {
+  id: { type: DataTypes.STRING, primaryKey: true },
+  userId: DataTypes.STRING,
+  type: DataTypes.STRING,
+  make: DataTypes.STRING,
+  model: DataTypes.STRING,
+  height: DataTypes.FLOAT,
+  length: DataTypes.FLOAT,
+  weight: DataTypes.FLOAT,
+  imageUrl: DataTypes.STRING
+}, { timestamps: false });
+
+const MaintenanceEntry = sequelize.define('MaintenanceEntry', {
+  id: { type: DataTypes.STRING, primaryKey: true },
+  vehicleId: DataTypes.STRING,
+  date: DataTypes.DATEONLY,
+  type: DataTypes.STRING,
+  notes: DataTypes.TEXT
+}, { timestamps: false });
+// Definiamo anche il modello Spot
+
+const Spot = sequelize.define('Spot', {
+  id: { type: DataTypes.STRING, primaryKey: true },
+  name: DataTypes.STRING,
+Last login: Wed Apr 30 14:03:28 on ttys000
+francescofarina@MacBook-Air-di-Francesco ~ % cd ~/easycamper/server
+nano index.js
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  UW PICO 5.09                         File: index.js                           
+
+  date: DataTypes.DATEONLY,
+  type: DataTypes.STRING, 
+  notes: DataTypes.TEXT   
+}, { timestamps: false });
+// Definiamo anche il modello Spot
+
+const Spot = sequelize.define('Spot', {
+  id: { type: DataTypes.STRING, primaryKey: true },
+  name: DataTypes.STRING,
+  coords: DataTypes.JSONB,
+  services: DataTypes.JSONB,
+  availability: DataTypes.STRING,
+  rating: DataTypes.FLOAT,
+  images: DataTypes.JSONB 
+}, { timestamps: false });
+
+// --- Endpoints Spot ---
+app.get('/spots', asyncHandler(async (_req, res) => {
+  const list = await Spot.findAll();
+
+^G Get Help  ^O WriteOut  ^R Read File ^Y Prev P
+// --- Endpoints Spot ---
+app.get('/spots', asyncHandler(async (_req, res) => {
+  const list = await Spot.findAll();
+  res.json(list);
+}));
+
+app.post('/spots', asyncHandler(async (req, res) => {
+  const s = await Spot.create(req.body);
+  res.status(201).json(s);
+}));
+
+app.get('/spots/:id', asyncHandler(async (req, res) => {
+  const s = await Spot.findByPk(req.params.id);
+  if (!s) return res.status(404).json({ error: 'Not found' });
+  res.json(s);
+}));
+
+const app = express();
+app.use(express.json());
+
+// Sincronizza il DB (solo in dev)
+sequelize.sync();
+
+// Health check
+app.get('/', (_req, res) => res.send('Easycamper API is running'));
+
+// --- Vehicles ---
+app.get('/vehicles', asyncHandler(async (_req, res) => {
+  const list = await Vehicle.findAll();
+  res.json(list);
+}));
+
+app.post('/vehicles', asyncHandler(async (req, res) => {
+  const v = await Vehicle.create(req.body);
+  res.status(201).json(v);
+}));
+
+// --- Maintenance ---
+app.get('/maintenance', asyncHandler(async (req, res) => {
+  const { vehicleId } = req.query;
+  const list = await MaintenanceEntry.findAll({ where: { vehicleId } });
+  res.json(list);
+}));
+
+app.post('/maintenance', asyncHandler(async (req, res) => {
+  const m = await MaintenanceEntry.create(req.body);
+  res.status(201).json(m);
+}));
+
+// Error handler (ultimo middleware)
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: err.message });
+});
+
+// Avvio del server
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log('Server listening on http://localhost:' + port);
+});
