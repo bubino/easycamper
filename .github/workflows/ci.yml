@@ -1,15 +1,10 @@
 name: CI
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+on: [push]
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
     services:
       postgres:
         image: postgres:13
@@ -20,36 +15,34 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U $${{ services.postgres.env.POSTGRES_USER }}"
+          --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
-    env:
-      NODE_ENV: test
-      POSTGRES_USER: easycamper
-      POSTGRES_PASSWORD: secret123
-      POSTGRES_DB: easycamper_test
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
-      JWT_SECRET: dummysecret
-      JWT_REFRESH_SECRET: dummyrefresh
-      JWT_EXPIRES_IN: 1h
-      JWT_REFRESH_EXPIRES_IN: 7d
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Use Node.js 18
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
 
-    - name: Install dependencies
-      working-directory: server
-      run: npm ci
+      - name: Install dependencies
+        working-directory: server
+        run: npm ci
 
-    - name: Run tests
-      working-directory: server
-      run: npm test
+      - name: Wait for Postgres
+        run: npx wait-on tcp:localhost:5432
+
+      - name: Run migrations
+        working-directory: server
+        run: npx sequelize-cli db:migrate --env test
+
+      - name: Seed test data
+        working-directory: server
+        run: npx sequelize-cli db:seed:all --env test
+
+      - name: Run tests
+        working-directory: server
+        run: npm test
