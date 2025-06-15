@@ -4,19 +4,49 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class MaintenanceEntry extends Model {
     static associate(models) {
-      MaintenanceEntry.belongsTo(models.Vehicle, { foreignKey: 'vehicleId', as: 'vehicle' });
+      MaintenanceEntry.belongsTo(models.User, {
+        foreignKey: 'userId',
+        as: 'user',
+        onDelete: 'CASCADE',
+      });
+      MaintenanceEntry.belongsTo(models.Vehicle, {
+        foreignKey: 'vehicleId',
+        as: 'vehicle',
+        onDelete: 'CASCADE',
+      });
     }
   }
-  MaintenanceEntry.init({
-    id:        { type: DataTypes.STRING, primaryKey: true },
-    vehicleId: { type: DataTypes.STRING, allowNull: false },
-    date:      { type: DataTypes.DATEONLY, allowNull: false },
-    type:      { type: DataTypes.ENUM('tagliando','riparazione','controllo'), allowNull: false },
-    notes:     DataTypes.TEXT
-  }, {
-    sequelize,
-    modelName: 'MaintenanceEntry',
-    timestamps: true
-  });
+
+  MaintenanceEntry.init(
+    {
+      id: {
+        type: DataTypes.STRING,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+      },
+      userId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      vehicleId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      description: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      date: DataTypes.DATEONLY,
+      cost: DataTypes.FLOAT,
+    },
+    {
+      sequelize,
+      modelName: 'MaintenanceEntry',
+      tableName: 'maintenance_entries',
+      underscored: true,
+      timestamps: true,
+    },
+  );
+
   return MaintenanceEntry;
 };

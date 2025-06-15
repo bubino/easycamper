@@ -1,18 +1,21 @@
-// __tests__/api.test.js
-const request = require('supertest');
-const app     = require('../index.js');
+/* __tests__/api.test.js */
+const request   = require('supertest');
+const app       = require('../app');           // punta a app.js
 const { sequelize } = require('../models');
 
 let token;
+let vehicleId;
+let spotId;
+let entryId;
 
 beforeAll(async () => {
-  // 1) ricrea schema
+  // 1) ricrea schema pulito
   await sequelize.sync({ force: true });
 
   // 2) registra e fai login una sola volta
   await request(app)
     .post('/auth/register')
-    .send({ id: 't1', username: 'test', password: 'password' });
+    .send({ username: 'test', password: 'password' }); // NON inviare l’id: lo crea il DB
 
   const res = await request(app)
     .post('/auth/login')
@@ -30,6 +33,7 @@ describe('Vehicles API', () => {
     const res = await request(app)
       .get('/vehicles')
       .set('Authorization', `Bearer ${token}`);
+
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([]);
   });
@@ -38,16 +42,25 @@ describe('Vehicles API', () => {
     const res = await request(app)
       .post('/vehicles')
       .set('Authorization', `Bearer ${token}`)
-      .send({ id:'v1', type:'camper', make:'Fiat', model:'Ducato' });
+      .send({
+        type:  'camper',
+        make:  'Fiat',
+        model: 'Ducato'
+      });
+
     expect(res.statusCode).toBe(201);
-    expect(res.body).toHaveProperty('id','v1');
+    expect(res.body).toHaveProperty('id', expect.any(String));
+    vehicleId = res.body.id;
   });
 
-  it('GET /vehicles -> [v1]', async () => {
+  it('GET /vehicles -> [una entry]', async () => {
     const res = await request(app)
       .get('/vehicles')
       .set('Authorization', `Bearer ${token}`);
+
+    expect(res.statusCode).toBe(200);
     expect(res.body).toHaveLength(1);
+    expect(res.body[0].id).toBe(vehicleId);
   });
 });
 
@@ -56,18 +69,27 @@ describe('Spots API', () => {
     const res = await request(app)
       .get('/spots')
       .set('Authorization', `Bearer ${token}`);
+
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([]);
   });
 
   it('POST /spots -> 201', async () => {
-    const payload = { id:'s1', name:'Camping', description:'Bel posto', latitude:45.0, longitude:7.0 };
+    const payload = {
+      name:        'Camping',
+      description: 'Bel posto',
+      latitude:     45.0,
+      longitude:    7.0
+    };
     const res = await request(app)
       .post('/spots')
       .set('Authorization', `Bearer ${token}`)
       .send(payload);
+
     expect(res.statusCode).toBe(201);
-    expect(res.body).toMatchObject({ id:'s1', name:'Camping' });
+    expect(res.body).toHaveProperty('id', expect.any(String));
+    expect(res.body).toMatchObject({ name: 'Camping' });
+    spotId = res.body.id;
   });
 
   it('full CRUD on /spots/:id', async () => {
@@ -79,24 +101,26 @@ describe('Spots API', () => {
 
     // GET single
     res = await request(app)
-      .get('/spots/s1')
+      .get(`/spots/${spotId}`)
       .set('Authorization', `Bearer ${token}`);
     expect(res.statusCode).toBe(200);
+    expect(res.body.id).toBe(spotId);
 
     // PUT
     res = await request(app)
-      .put('/spots/s1')
+      .put(`/spots/${spotId}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Camping Updated' });
+    expect(res.statusCode).toBe(200);
     expect(res.body.name).toBe('Camping Updated');
 
     // DELETE
     res = await request(app)
-      .delete('/spots/s1')
+      .delete(`/spots/${spotId}`)
       .set('Authorization', `Bearer ${token}`);
     expect(res.statusCode).toBe(204);
 
-    // Confirm deletion
+    // Conferma cancellazione
     res = await request(app)
       .get('/spots')
       .set('Authorization', `Bearer ${token}`);
@@ -106,35 +130,41 @@ describe('Spots API', () => {
 
 describe('MaintenanceEntry API', () => {
   beforeAll(async () => {
-    // assicurati di avere un veicolo
+    // assicuriamoci di avere un veicolo
     await request(app)
       .post('/vehicles')
       .set('Authorization', `Bearer ${token}`)
-      .send({ id:'v2', type:'van', make:'Ford', model:'Transit' });
+      .send({
+        type:  'van',
+        make:  'Ford',
+        model: 'Transit'
+      });
   });
 
   it('GET /maintenance -> []', async () => {
     const res = await request(app)
       .get('/maintenance')
       .set('Authorization', `Bearer ${token}`);
+
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([]);
   });
 
   it('POST /maintenance -> 201', async () => {
     const payload = {
-      id: 'm1',
-      vehicleId: 'v2',
-      date: '2025-01-01',
-      type: 'tagliando',
-      notes: 'Cambio olio'
+      vehicleId,
+      date:    '2025-01-01',
+      type:    'tagliando',
+      notes:   'Cambio olio'
     };
     const res = await request(app)
       .post('/maintenance')
       .set('Authorization', `Bearer ${token}`)
       .send(payload);
+
     expect(res.statusCode).toBe(201);
-    expect(res.body).toHaveProperty('id','m1');
+    expect(res.body).toHaveProperty('id', expect.any(String));
+    entryId = res.body.id;
   });
 
   it('full CRUD on /maintenance/:id', async () => {
@@ -142,23 +172,30 @@ describe('MaintenanceEntry API', () => {
       .get('/maintenance')
       .set('Authorization', `Bearer ${token}`);
     expect(res.body).toHaveLength(1);
+    expect(res.body[0].id).toBe(entryId);
 
+    // GET single
     res = await request(app)
-      .get('/maintenance/m1')
+      .get(`/maintenance/${entryId}`)
       .set('Authorization', `Bearer ${token}`);
     expect(res.statusCode).toBe(200);
+    expect(res.body.id).toBe(entryId);
 
+    // PUT
     res = await request(app)
-      .put('/maintenance/m1')
+      .put(`/maintenance/${entryId}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ notes: 'Filtro aria' });
+    expect(res.statusCode).toBe(200);
     expect(res.body.notes).toBe('Filtro aria');
 
+    // DELETE
     res = await request(app)
-      .delete('/maintenance/m1')
+      .delete(`/maintenance/${entryId}`)
       .set('Authorization', `Bearer ${token}`);
     expect(res.statusCode).toBe(204);
 
+    // Conferma cancellazione
     res = await request(app)
       .get('/maintenance')
       .set('Authorization', `Bearer ${token}`);

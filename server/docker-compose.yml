@@ -1,15 +1,14 @@
-version: '3.8'
 services:
-  db:
-    image: postgres:15
+  db_test:
+    image: postgres:14
     environment:
-      POSTGRES_DB: easycamper
+      POSTGRES_DB: easycamper_test
       POSTGRES_USER: easycamper
       POSTGRES_PASSWORD: secret123
     ports:
-      - '5432:5432'
+      - "5433:5432"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - db_test_data:/var/lib/postgresql/data
 
 volumes:
-  db-data:
+  db_test_data:

@@ -1,0 +1,126 @@
+ed -i '' '1,/^openapi:/ {/^openapi:/!d}' api/easycampe## API Specification Easycamper
+
+
+
+```yaml
+openapi: 3.0.0
+info:
+  title: Easycamper API
+  version: 0.1.0
+servers:
+  - url: https://api.easycamper.local
+    description: Mock server
+paths:
+  /vehicles:
+    get:
+      summary: Lista dei veicoli dell'utente
+      responses:
+        '200':
+          description: Array di veicoli
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vehicle'
+    post:
+      summary: Registra un nuovo veicolo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewVehicle'
+      responses:
+        '201':
+          description: Veicolo creato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+  /vehicles/{vehicleId}:
+    get:
+      summary: Dettaglio di un veicolo
+      parameters:
+        - in: path
+          name: vehicleId
+          schema:
+            type: string
+          required: true
+          description: ID del veicolo
+      responses:
+        '200':
+          description: Dati del veicolo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '404':
+          description: Veicolo non trovato
+components:
+  schemas:
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "abc123"
+        userId:
+          type: string
+          example: "user456"
+        type:
+          type: string
+          enum: [camper, van, caravan]
+        make:
+          type: string
+          example: "Fiat"
+        model:
+          type: string
+          example: "Ducato"
+        height:
+          type: number
+          description: Altezza in metri
+          example: 3.0
+        length:
+          type: number
+          description: Lunghezza in metri
+          example: 7.2
+        weight:
+          type: number
+          description: Peso in tonnellate
+          example: 3.5
+        imageUrl:
+          type: string
+          format: uri
+      required: [id, userId, type, make, model]
+    NewVehicle:
+      type: object
+      properties:
+        userId:
+          type: string
+        type:
+          type: string
+          enum: [camper, van, caravan]
+        make:
+          type: string
+        model:
+          type: string
+        height:
+          type: number
+        length:
+          type: number
+        weight:
+          type: number
+      required: [userId, type, make, model]
+```
+
+
+**Next Steps:**
+
+1. Definire gli endpoint per **Aree di Sosta** (`GET /spots`, `GET /spots/{spotId}`) con i rispettivi schemi.
+2. Generare un mock server (es. Prism: `prism mock /api/easycamper/openapi.yaml`).
+3. Testare con `curl` o Postman per verificare risposte e structure.
+4. Configurare l'`ApiClient` nella app Flutter per puntare al mock server.
+
+Quando hai creato il file `openapi.yaml`, fammi sapere e procediamo con gli endpoint `spots`!
+
