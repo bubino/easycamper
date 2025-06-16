@@ -1,69 +1,36 @@
 'use strict';
+
 module.exports = {
-  async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Vehicles', {
+  async up (queryInterface, Sequelize) {
+    await queryInterface.createTable('vehicles', {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.literal('uuid_generate_v4()'),
         allowNull: false,
-        primaryKey: true,
+        primaryKey: true
       },
-      userId: {
+      user_id: {
         type: Sequelize.UUID,
         allowNull: false,
-        references: { model: 'Users', key: 'id' },
-        onDelete: 'CASCADE',
+        references: {
+          model: 'users',
+          key: 'id'
+        },
         onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
-      type: {
-        type: Sequelize.ENUM('camper', 'van', 'motorhome'),
-        allowNull: false,
-      },
-      make: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
-      model: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
-      licensePlate: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      year: {
-        type: Sequelize.INTEGER,
-        allowNull: true,
-      },
-      height: {
-        type: Sequelize.FLOAT,
-        allowNull: true,
-      },
-      length: {
-        type: Sequelize.FLOAT,
-        allowNull: true,
-      },
-      weight: {
-        type: Sequelize.FLOAT,
-        allowNull: true,
-      },
-      imageUrl: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      createdAt: {
-        allowNull: false,
-        type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('NOW()')
-      },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('NOW()')
-      }
+      make:      { type: Sequelize.STRING },
+      model:     { type: Sequelize.STRING },
+      year:      { type: Sequelize.INTEGER },
+      length:    { type: Sequelize.FLOAT },
+      height:    { type: Sequelize.FLOAT },
+      weight:    { type: Sequelize.FLOAT },
+      created_at:{ type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('NOW()') },
+      updated_at:{ type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('NOW()') }
     });
   },
-  async down(queryInterface) {
-    await queryInterface.dropTable('Vehicles');
+
+  async down (queryInterface, Sequelize) {
+    await queryInterface.dropTable('vehicles');
   }
 };
