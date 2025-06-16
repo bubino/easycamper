@@ -36,7 +36,6 @@ router.post('/spots/:id/photo', async (req, res, next) => {
   try {
     const { key } = req.body;
     const url = getPublicUrl(key);
-    // TODO: salva url nel DB se serve
     res.status(201).json({ url });
   } catch (err) {
     next(err);
