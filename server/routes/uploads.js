@@ -10,7 +10,7 @@ const uploadImage  = require('../middleware/uploadImage');
 // POST /api/uploads  – field name: image
 router.post(
   '/',
-  authenticate,                 // commenta per test senza JWT
+  //authenticate,                 // commenta per test senza JWT
   uploadMem.single('image'),
   uploadImage,
   (req, res) => res.json({ url: req.fileUrl })
