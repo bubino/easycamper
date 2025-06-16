@@ -9,7 +9,7 @@ const { getPresignedUrl, getPublicUrl } = require('../services/fileStorage');
 
 const router = express.Router();
 
-// commenta se vuoi provare in pubblico senza JWT
+// Se vuoi accesso pubblico commenta la riga seguente
 router.use(authenticate);
 
 // 0) POST  /api/uploads           ← multipart/form-data
@@ -31,7 +31,7 @@ router.get('/spots/:id/photo-url', async (req, res, next) => {
   }
 });
 
-// 2) POST  /api/uploads/spots/:id/photo       ← pubblica URL
+// 2) POST  /api/uploads/spots/:id/photo       ← public URL
 router.post('/spots/:id/photo', async (req, res, next) => {
   try {
     const { key } = req.body;
