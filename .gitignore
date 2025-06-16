@@ -64,3 +64,6 @@ Library/
 # Cache macOS / TypeScript
 Users/
 Library/
+
+# staging env, non versionato
+server/.env.staging
