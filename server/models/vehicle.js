@@ -14,23 +14,34 @@ module.exports = (sequelize, DataTypes) => {
         as: 'maintenanceEntries',
         onDelete: 'CASCADE',
       });
+      Vehicle.hasOne(models.CamperSpec, {
+        foreignKey: 'vehicleId',
+        as: 'spec',
+        onDelete: 'CASCADE',
+      });
     }
   }
 
   Vehicle.init(
     {
       id: {
-        type: DataTypes.STRING,           // UUID serializzato
+        type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
       },
       userId: {
-        type: DataTypes.STRING,
+        type: DataTypes.UUID,
         allowNull: false,
+        references: {
+          model: 'users',
+          key: 'id',
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
       },
-      make:  DataTypes.STRING,
-      model: DataTypes.STRING,
-      year:  DataTypes.INTEGER,
+      make:   DataTypes.STRING,
+      model:  DataTypes.STRING,
+      year:   DataTypes.INTEGER,
       length: DataTypes.FLOAT,
       height: DataTypes.FLOAT,
       weight: DataTypes.FLOAT,
