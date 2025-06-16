@@ -8,11 +8,11 @@ const cors           = require('cors');
 const cookieParser   = require('cookie-parser');
 const swaggerUi      = require('swagger-ui-express');
 const swaggerSpec    = require('./swagger');
-
 const authenticate   = require('./middleware/authenticateToken');
+
 const specRouter     = require('./routes/camperSpecs');
 const uploadsRouter  = require('./routes/uploads');
-const listEndpoints = require('express-list-endpoints');
+const listEndpoints  = require('express-list-endpoints');
 
 const app = express();
 
@@ -31,6 +31,10 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 /* ──────────────  rotte pubbliche  ────────────── */
 app.use('/auth', require('./routes/auth'));
 
+/* ──────────────  upload immagini (MinIO)  ────────────── */
+// endpoint in chiaro per test, poi riattiva `authenticate` se serve JWT
+app.use('/api/uploads', uploadsRouter);
+
 /* ──────────────  rotte protette  ────────────── */
 app.use('/users',             authenticate, require('./routes/users'));
 app.use('/vehicles',          authenticate, require('./routes/vehicles'));
@@ -41,10 +45,7 @@ app.use('/favorites',         authenticate, require('./routes/favorites'));
 app.use('/maintenance',       authenticate, require('./routes/maintenanceEntries'));
 app.use('/camper-specs',      authenticate, specRouter);
 
-/* ──────────────  upload immagini (MinIO)  ────────────── */
-console.log('→ monto uploadsRouter');
-app.use('/api/uploads', uploadsRouter);
-
+/* ──────────────  debug: elenco endpoints  ────────────── */
 console.log('🚀 endpoints registrati:\n', listEndpoints(app));
 
 /* ──────────────  export  ────────────── */
