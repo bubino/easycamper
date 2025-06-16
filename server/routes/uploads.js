@@ -1,15 +1,26 @@
 'use strict';
 
-const express    = require('express');
-const multer     = require('multer');
-const uploadMem  = multer({ storage: multer.memoryStorage() });
-const authenticate = require('../middleware/authenticateToken');
+const express       = require('express');
+const multer        = require('multer');
+const uploadMem     = multer({ storage: multer.memoryStorage() });
+const authenticate  = require('../middleware/authenticateToken');
+const uploadImage   = require('../middleware/uploadImage');
 const { getPresignedUrl, getPublicUrl } = require('../services/fileStorage');
 
 const router = express.Router();
-router.use(authenticate); // commenta se vuoi pubblica
 
-// 1) GET  /api/uploads/spots/:id/photo-url
+// commenta se vuoi provare in pubblico senza JWT
+router.use(authenticate);
+
+// 0) POST  /api/uploads           ← multipart/form-data
+router.post(
+  '/',
+  uploadMem.single('image'),
+  uploadImage,
+  (req, res) => res.json({ url: req.fileUrl })
+);
+
+// 1) GET   /api/uploads/spots/:id/photo-url   ← presigned URL
 router.get('/spots/:id/photo-url', async (req, res, next) => {
   try {
     const key = `spots/${req.params.id}/${Date.now()}.jpg`;
@@ -20,13 +31,12 @@ router.get('/spots/:id/photo-url', async (req, res, next) => {
   }
 });
 
-// 2) POST /api/uploads/spots/:id/photo
-//     body: { "key":"spots/123/...jpg" }
+// 2) POST  /api/uploads/spots/:id/photo       ← pubblica URL
 router.post('/spots/:id/photo', async (req, res, next) => {
   try {
     const { key } = req.body;
     const url = getPublicUrl(key);
-    // TODO: salva url in DB se serve
+    // TODO: salva url nel DB se serve
     res.status(201).json({ url });
   } catch (err) {
     next(err);

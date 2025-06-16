@@ -15,26 +15,25 @@ const uploadsRouter  = require('./routes/uploads');
 
 const app = express();
 
-/* ──────────────  middleware  ────────────── */
+// ─── middleware ───
 app.use(helmet());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
-/* ──────────────  health check  ────────────── */
+// ─── health ───
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-/* ──────────────  Swagger UI  ────────────── */
+// ─── swagger ───
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-/* ──────────────  rotte pubbliche  ────────────── */
+// ─── public routes ───
 app.use('/auth', require('./routes/auth'));
 
-/* ──────────────  upload immagini (MinIO)  ────────────── */
-
+// ─── uploads (MinIO) ───
 app.use('/api/uploads', uploadsRouter);
 
-/* ──────────────  rotte protette  ────────────── */
+// ─── protected routes ───
 app.use('/users',             authenticate, require('./routes/users'));
 app.use('/vehicles',          authenticate, require('./routes/vehicles'));
 app.use('/spots',             authenticate, require('./routes/spots'));
@@ -44,5 +43,4 @@ app.use('/favorites',         authenticate, require('./routes/favorites'));
 app.use('/maintenance',       authenticate, require('./routes/maintenanceEntries'));
 app.use('/camper-specs',      authenticate, specRouter);
 
-/* ──────────────  export  ────────────── */
 module.exports = app;
