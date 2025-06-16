@@ -12,6 +12,7 @@ const swaggerSpec    = require('./swagger');
 const authenticate   = require('./middleware/authenticateToken');
 const specRouter     = require('./routes/camperSpecs');
 const uploadsRouter  = require('./routes/uploads');
+const listEndpoints = require('express-list-endpoints');
 
 const app = express();
 
@@ -43,6 +44,8 @@ app.use('/camper-specs',      authenticate, specRouter);
 /* ──────────────  upload immagini (MinIO)  ────────────── */
 console.log('→ monto uploadsRouter');
 app.use('/api/uploads', uploadsRouter);
+
+console.log('🚀 endpoints registrati:\n', listEndpoints(app));
 
 /* ──────────────  export  ────────────── */
 module.exports = app;
