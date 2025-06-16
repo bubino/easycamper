@@ -48,3 +48,8 @@ app.*.map.json
 /android/app/release
 
 **/node_modules/
+
+# cache locali macOS / TypeScript
+Library/
+*.swp
+
