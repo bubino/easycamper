@@ -2,16 +2,16 @@ require('dotenv').config({
   path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
 });
 
-const express      = require('express');
-const helmet       = require('helmet');
-const cors         = require('cors');
-const cookieParser = require('cookie-parser');
-const swaggerUi    = require('swagger-ui-express');
-const swaggerSpec  = require('./swagger');
+const express        = require('express');
+const helmet         = require('helmet');
+const cors           = require('cors');
+const cookieParser   = require('cookie-parser');
+const swaggerUi      = require('swagger-ui-express');
+const swaggerSpec    = require('./swagger');
 
-const authenticate  = require('./middleware/authenticateToken');
-const specRouter    = require('./routes/camperSpecs');
-const uploadsRouter = require('./routes/uploads');
+const authenticate   = require('./middleware/authenticateToken');
+const specRouter     = require('./routes/camperSpecs');
+const uploadsRouter  = require('./routes/uploads');
 
 const app = express();
 
@@ -31,7 +31,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/auth', require('./routes/auth'));
 
 /* ──────────────  upload immagini (MinIO)  ────────────── */
-// ATTENZIONE: questo deve essere subito dopo le pubbliche
+
 app.use('/api/uploads', uploadsRouter);
 
 /* ──────────────  rotte protette  ────────────── */
