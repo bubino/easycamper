@@ -53,3 +53,10 @@ app.*.map.json
 Library/
 *.swp
 
+
+# ⬇️ cache/mac junk
+Users/
+Library/
+.DS_Store
+*.swp
+
