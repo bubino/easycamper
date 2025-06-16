@@ -4,39 +4,38 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class CamperSpec extends Model {
     static associate(models) {
-      // CamperSpec → Vehicle
+      // Solo la relazione CamperSpec → Vehicle
       CamperSpec.belongsTo(models.Vehicle, {
         foreignKey: 'vehicleId',
         as: 'vehicle',
+        onDelete: 'CASCADE'
       });
-
-      // Vehicle → CamperSpec  (relazione inversa)
-      models.Vehicle.hasOne(CamperSpec, {
-        foreignKey: 'vehicleId',
-        as: 'spec',
-      });
+      // rimosso il doppio hasOne per evitare alias duplicati
     }
   }
 
-  CamperSpec.init(
-    {
-      vehicleId: {
-        type: DataTypes.UUID,
-        allowNull: false,
-        primaryKey: true,
+  CamperSpec.init({
+    vehicleId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      primaryKey: true,
+      references: {
+        model: 'vehicles',
+        key: 'id'
       },
-      height: { type: DataTypes.FLOAT, allowNull: false },
-      width:  { type: DataTypes.FLOAT, allowNull: false },
-      length: { type: DataTypes.FLOAT, allowNull: false },
-      weight: { type: DataTypes.FLOAT, allowNull: false },
+      onUpdate: 'CASCADE',
+      onDelete: 'NO ACTION'
     },
-    {
-      sequelize,
-      modelName: 'CamperSpec',
-      tableName: 'CamperSpecs',
-      timestamps: false,
-    },
-  );
+    height: { type: DataTypes.FLOAT, allowNull: false },
+    width:  { type: DataTypes.FLOAT, allowNull: false },
+    length: { type: DataTypes.FLOAT, allowNull: false },
+    weight: { type: DataTypes.FLOAT, allowNull: false }
+  }, {
+    sequelize,
+    modelName: 'CamperSpec',
+    tableName: 'CamperSpecs',
+    timestamps: false
+  });
 
   return CamperSpec;
 };
