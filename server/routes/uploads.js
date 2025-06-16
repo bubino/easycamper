@@ -1,29 +1,16 @@
+'use strict';
+
 const router    = require('express').Router();
 const multer    = require('multer');
 const uploadMem = multer({ storage: multer.memoryStorage() });
 
-const authenticate = require('../middleware/authenticateToken'); // togli se pubblico
+const authenticate = require('../middleware/authenticateToken'); // togli se vuoi endpoint pubblico
 const uploadImage  = require('../middleware/uploadImage');
 
+// POST /api/uploads  – field name: image
 router.post(
   '/',
-  authenticate,                 // commenta se vuoi testare senza JWT
-  uploadMem.single('image'),
-  uploadImage,
-  (req, res) => res.json({ url: req.fileUrl })
-);
-
-module.exports = router;// filepath: server/routes/uploads.js
-const router    = require('express').Router();
-const multer    = require('multer');
-const uploadMem = multer({ storage: multer.memoryStorage() });
-
-const authenticate = require('../middleware/authenticateToken'); // togli se pubblico
-const uploadImage  = require('../middleware/uploadImage');
-
-router.post(
-  '/',
-  authenticate,               // commenta se non serve auth
+  authenticate,                 // commenta per test senza JWT
   uploadMem.single('image'),
   uploadImage,
   (req, res) => res.json({ url: req.fileUrl })
