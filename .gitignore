@@ -60,3 +60,7 @@ Library/
 .DS_Store
 *.swp
 
+
+# Cache macOS / TypeScript
+Users/
+Library/
