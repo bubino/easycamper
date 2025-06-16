@@ -41,6 +41,7 @@ app.use('/maintenance',       authenticate, require('./routes/maintenanceEntries
 app.use('/camper-specs',      authenticate, specRouter);
 
 /* ──────────────  upload immagini (MinIO)  ────────────── */
+console.log('→ monto uploadsRouter');
 app.use('/api/uploads', uploadsRouter);
 
 /* ──────────────  export  ────────────── */
