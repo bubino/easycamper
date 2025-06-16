@@ -2,17 +2,20 @@ require('dotenv').config({
   path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
 });
 
-const express        = require('express');
-const helmet         = require('helmet');
-const cors           = require('cors');
-const cookieParser   = require('cookie-parser');
-const swaggerUi      = require('swagger-ui-express');
-const swaggerSpec    = require('./swagger');
-const authenticate   = require('./middleware/authenticateToken');
+const express      = require('express');
+const helmet       = require('helmet');
+const cors         = require('cors');
+const cookieParser = require('cookie-parser');
+const swaggerUi    = require('swagger-ui-express');
+const swaggerSpec  = require('./swagger');
+const authenticate = require('./middleware/authenticateToken');
+const specRouter   = require('./routes/camperSpecs');
+const listEndpoints= require('express-list-endpoints');
 
-const specRouter     = require('./routes/camperSpecs');
-const uploadsRouter  = require('./routes/uploads');
-const listEndpoints  = require('express-list-endpoints');
+// per prova inline:
+const multer     = require('multer');
+const uploadMem  = multer({ storage: multer.memoryStorage() });
+const uploadImage = require('./middleware/uploadImage');
 
 const app = express();
 
@@ -31,9 +34,13 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 /* ──────────────  rotte pubbliche  ────────────── */
 app.use('/auth', require('./routes/auth'));
 
-/* ──────────────  upload immagini (MinIO)  ────────────── */
-// endpoint in chiaro per test, poi riattiva `authenticate` se serve JWT
-app.use('/api/uploads', uploadsRouter);
+/* ──────────────  upload immagini (MinIO) inline  ────────────── */
+app.post(
+  '/api/uploads',
+  uploadMem.single('image'),
+  uploadImage,
+  (req, res) => res.json({ url: req.fileUrl })
+);
 
 /* ──────────────  rotte protette  ────────────── */
 app.use('/users',             authenticate, require('./routes/users'));
