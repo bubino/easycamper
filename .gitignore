@@ -66,4 +66,4 @@ Users/
 Library/
 
 # staging env, non versionato
-server/.env.stagingserver/.env.staging
+server/.env.staging
