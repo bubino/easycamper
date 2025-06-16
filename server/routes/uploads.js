@@ -1,10 +1,10 @@
 'use strict';
 
-const express      = require('express');
-const multer       = require('multer');
-const uploadMem    = multer({ storage: multer.memoryStorage() });
-const authenticate = require('../middleware/authenticateToken');
-const uploadImage  = require('../middleware/uploadImage');
+const express       = require('express');
+const multer        = require('multer');
+const uploadMem     = multer({ storage: multer.memoryStorage() });
+const authenticate  = require('../middleware/authenticateToken');
+const uploadImage   = require('../middleware/uploadImage');
 const { getPresignedUrl, getPublicUrl } = require('../services/fileStorage');
 
 const router = express.Router();
