@@ -112,16 +112,21 @@
 ---
 
 ## Milestones (Gantt semplificato aggiornato)
-'''
-Wk1  Wk2  Wk3  Wk4  Wk5  Wk6  Wk7  Wk8  Wk9
-[Infra/Shard] ■■■■
-[Routing    ] ■■■■
-[Storage    ]      ■■
-[Map/Filtri ]         ■■■■
-[Nav In-Car ]            ■■■■
-[Vehicle DB ]               ■■
-[Fuel Price ]                  ■■
-[UX Premium ]                     ■■
-'''
+```mermaid
+gantt
+    title Roadmap EasyCamper
+    dateFormat  W
+    axisFormat W%W
+
+    section Sviluppo Principale
+    Infra & Sharding      :done, W1, 2w
+    Routing Multi-Shard   :done, W1, 2w
+    Storage & Media       :active, W3, 1w
+    Mappa & Filtri        :W4, 2w
+    Navigazione In-Car    :W5, 2w
+    Database Veicoli      :W6, 1w
+    Prezzi Carburante     :W7, 1w
+    UX Premium            :W8, 1w
+```
 
 > **Target beta pubblica**: fine settimana 9.
