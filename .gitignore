@@ -64,3 +64,6 @@ Library/
 
 # staging env, non versionato
 server/.env.staging
+
+# Ignora la toolchain di Flutter locale
+/tools/
