@@ -115,18 +115,20 @@
 ```mermaid
 gantt
     title Roadmap EasyCamper
-    dateFormat  W
-    axisFormat W%W
+    dateFormat  YYYY-MM-DD
+    axisFormat  %Y-%m-%d
 
-    section Sviluppo Principale
-    Infra & Sharding      :done, W1, 2w
-    Routing Multi-Shard   :done, W1, 2w
-    Storage & Media       :active, W3, 1w
-    Mappa & Filtri        :W4, 2w
-    Navigazione In-Car    :W5, 2w
-    Database Veicoli      :W6, 1w
-    Prezzi Carburante     :W7, 1w
-    UX Premium            :W8, 1w
+    section Sviluppo Passato
+    Infra & Sharding      :done, 2025-06-02, 14d
+    Routing Multi-Shard   :done, 2025-06-16, 14d
+
+    section Sviluppo Futuro
+    Storage & Media       :active, 2025-06-30, 7d
+    Mappa & Filtri        :2025-07-07, 14d
+    Navigazione In-Car    :2025-07-21, 14d
+    Database Veicoli      :2025-08-04, 7d
+    Prezzi Carburante     :2025-08-11, 7d
+    UX Premium            :2025-08-18, 7d
 ```
 
 > **Target beta pubblica**: fine settimana 9.
