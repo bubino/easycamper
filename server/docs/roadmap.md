@@ -126,6 +126,23 @@
 
 ---
 
+## 11. Kubernetes Integration – MEDIA
+- [ ] **MinIO Deployment:**
+  - [ ] Creare un file `minio-deployment.yaml` per configurare i pod e i servizi di MinIO.
+  - [ ] Configurare volumi persistenti per garantire la conservazione dei dati.
+  - [ ] Definire le credenziali di accesso (`MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`) come `Secrets` in Kubernetes.
+- [ ] **Ingress Controller:**
+  - [ ] Configurare un Ingress per esporre MinIO tramite un endpoint accessibile.
+- [ ] **Integrazione Backend:**
+  - [ ] Aggiornare il backend per utilizzare l'endpoint di MinIO su Kubernetes.
+- [ ] **Scalabilità e Alta Disponibilità:**
+  - [ ] Configurare MinIO in modalità distribuita per garantire alta disponibilità.
+  - [ ] Abilitare l'auto-scaling dei pod in base al carico.
+- [ ] **Monitoraggio:**
+  - [ ] Integrare strumenti di monitoraggio (es. Prometheus, Grafana) per tenere traccia delle prestazioni di MinIO e dei pod Kubernetes.
+
+---
+
 ## Checklist Sicurezza
 - [x] **helmet:** Attivo e configurato.
 - [x] **cors:** Attivo e configurato.
