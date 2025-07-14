@@ -1,4 +1,4 @@
-# EasyCamper – Roadmap & Checklist (Aggiornata al 30/06/2025)
+# EasyCamper – Roadmap & Checklist (Aggiornata al 14/07/2025)
 
 ## 0. Vision
 «Un’unica app per camperisti con routing “camper-aware”, community spot, filtri avanzati, prezzi carburante in tempo reale e navigazione integrata in-car».
@@ -31,39 +31,61 @@
 
 ---
 
-## 3. Storage & Media – PRIORITÀ ALTA (Sprint Corrente)
-- [ ] **Setup MinIO Docker**
-- [ ] Creare il bucket `easycamper-media` con policy di lettura pubblica.
-- [ ] Implementare il servizio `services/fileStorage.js` per l'upload di immagini (es. foto degli spot).
-- [ ] Configurare le variabili d'ambiente (`MINIO_ENDPOINT`, `MINIO_KEY`, etc.).
+## 3. Gestione Account Utente – PRIORITÀ ALTA
+- [ ] **Registrazione e Login:**
+  - [ ] Autenticazione tramite email/password.
+  - [ ] Autenticazione tramite Google e Apple.
+- [ ] **Gestione Account:**
+  - [ ] Cambia indirizzo email.
+  - [ ] Modifica password.
+  - [ ] Visualizza e modifica i dati personali.
+  - [ ] Gestione del veicolo (collegato al database camper).
 
 ---
 
-## 4. Mappa Interattiva & Filtri – ALTA (Prossimo Sprint)
-- [ ] **Layer Mappa Base**
-  - [ ] Visualizzare su mappa gli spot della community (da API).
-  - [ ] Implementare il bottom-sheet "Naviga qui" che avvia la richiesta di percorso all'API di routing.
-- [ ] **Filtri Avanzati (stile Park4night)**
-  - [ ] Sviluppare UI per i filtri (es. checkbox, slider).
-  - [ ] **Filtri per Servizi:** Acqua potabile, scarico acque grigie/nere, elettricità, Wi-Fi, docce.
-  - [ ] **Filtri per Tipo di Luogo:** Area sosta attrezzata, campeggio, parcheggio, agriturismo.
-  - [ ] **Filtri per Attività/Ambiente:** Vicino al mare, in montagna, vicino a un lago, adatto ai bambini.
-  - [ ] Aggiornare le API degli spot per supportare query con filtri multipli.
+## 4. Monetizzazione – MEDIA
+- [ ] **Logica Freemium/Premium:**
+  - [ ] Definire i vantaggi per gli utenti premium (es. filtri avanzati, POI esclusivi).
+  - [ ] Implementare il sistema di abbonamento.
 
 ---
 
-## 5. Navigazione In-Car – MEDIA
-- [ ] Integrazione Mapbox Navigation SDK.
-- [ ] Sviluppo modulo per Apple CarPlay.
-- [ ] Sviluppo modulo per Android Auto.
-- [ ] Gestione cache offline per mappe e spot (es. MapboxOfflineRegion + Hive).
+## 5. Mappa Interattiva & Filtri – ALTA
+- [ ] **Filtri Parcheggi:**
+  - [ ] Area camper gratuita.
+  - [ ] Area camper a pagamento.
+  - [ ] Area camper privata.
+  - [ ] Parcheggio camper senza servizi.
+  - [ ] Area di servizi senza sosta.
+  - [ ] Area di picnic.
+  - [ ] Area di sosta.
+  - [ ] Campeggio.
+  - [ ] Nella natura.
+  - [ ] Parcheggio giorno e notte.
+- [ ] **Filtri Servizi nelle Vicinanze:**
+  - [ ] Elettricità (accesso possibile).
+  - [ ] Acqua potabile.
+  - [ ] Acque nere.
+  - [ ] Acque di scarico.
+  - [ ] Cestini rifiuti.
+  - [ ] Bagni pubblici.
+  - [ ] Docce.
+  - [ ] Accesso a internet Wi-Fi.
+  - [ ] Animali ammessi.
+  - [ ] Servizio lavanderia.
+  - [ ] Stazione GPL.
+  - [ ] Lavaggio per camper.
+- [ ] **Valutazione POI:**
+  - [ ] Filtro per mostrare i POI in base alla valutazione nelle vicinanze.
 
 ---
 
-## 6. Database Veicoli – MEDIA
-- [ ] Creare tabella `VehicleModels`.
-- [ ] Sviluppare servizio `vehicleSpecFetch.js` per popolare il DB da API esterne (es. CarQuery/NHTSA).
-- [ ] Implementare endpoint `/vehicle-models` con autocompletamento.
+## 6. Database Camper – MEDIA
+- [ ] Creare un database con i modelli di camper van e autocaravan dal 2010 ad oggi.
+- [ ] Includere dati come altezza, lunghezza, larghezza, peso, capacità serbatoi, e caratteristiche speciali.
+- [ ] Collegare il database alla gestione del veicolo dell'utente.
+- [ ] Escludere automobili e altri veicoli non rilevanti.
+- [ ] Valutare l'uso di API esterne (es. CarQuery API) per popolare il database iniziale.
 
 ---
 
@@ -123,12 +145,11 @@ gantt
     Routing Multi-Shard   :done, 2025-06-16, 14d
 
     section Sviluppo Futuro
-    Storage & Media       :active, 2025-06-30, 7d
-    Mappa & Filtri        :2025-07-07, 14d
-    Navigazione In-Car    :2025-07-21, 14d
-    Database Veicoli      :2025-08-04, 7d
-    Prezzi Carburante     :2025-08-11, 7d
-    UX Premium            :2025-08-18, 7d
+    Gestione Account      :active, 2025-07-14, 14d
+    Mappa & Filtri        :2025-07-28, 14d
+    Database Camper       :2025-08-11, 14d
+    Prezzi Carburante     :2025-08-25, 7d
+    UX Premium            :2025-09-01, 7d
 ```
 
 > **Target beta pubblica**: fine settimana 9.
