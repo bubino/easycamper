@@ -93,6 +93,11 @@
 - [ ] Sviluppare `fuelService.js` per recuperare dati da API (es. Openfuel) con un cron job.
 - [ ] Creare layer sulla mappa per visualizzare i prezzi.
 - [ ] Implementare notifiche push per avvisi sui prezzi.
+- [ ] Visualizzare i prezzi del carburante lungo il percorso utilizzando l'interfaccia Mapbox.
+  - [ ] Se i dati sono troppo pesanti, limitare la visualizzazione al raggio di 10 km.
+- [ ] Mostrare le aree di sosta nel raggio di 30 km, se disponibili.
+  - [ ] Se i dati sono troppo pesanti, limitare la visualizzazione al raggio di 10 km.
+- [ ] Esplorare l'integrazione con POI rilevanti (es. Michelin, Pilot) e verificare eventuali restrizioni di copyright.
 
 ---
 
