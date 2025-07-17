@@ -4,6 +4,14 @@ const request              = require('supertest');
 const { sequelize, Spot } = require('../../models');
 const app                  = require('../../app');      // punta ad app.js, non index.js
 const { seedUser }         = require('../helpers/db');
+jest.mock('../../utils/multishardRoute.test', () => ({
+  getMultiShardRouteTest: jest.fn().mockResolvedValue({
+    points: 'mocked_polyline',
+    instructions: [],
+    distance: 12345,
+    time: 6789
+  })
+}));
 
 let token;
 
@@ -70,5 +78,48 @@ describe('GET /recommended-spots', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.statusCode).toBe(200);
     expect(res.body.spots.length).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('POST /api/recommended-spots', () => {
+  it('should create a new route from London to Bolzano (cross-shard)', async () => {
+    const response = await request(app)
+      .post('/api/recommended-spots')
+      .send({
+        start: {
+          "name": "London",
+          "point": { "type": "Point", "coordinates": [-0.1278, 51.5074] }
+        },
+        end: {
+          "name": "Bolzano",
+          "point": { "type": "Point", "coordinates": [11.3548, 46.4983] }
+        }
+      });
+    const { body } = response;
+    expect(response.status).toBe(200);
+    expect(body).toBeDefined();
+    expect(body).toHaveProperty('message', 'Route created successfully');
+  });
+});
+
+describe('POST /api/recommended-spots (real multishard, nord → sud-est)', () => {
+  it('should return a route between nord and sud-est using test maps', async () => {
+    const response = await request(app)
+      .post('/api/recommended-spots')
+      .send({
+        start: {
+          name: 'Test Nord',
+          point: { type: 'Point', coordinates: [9.0, 54.0] } // dentro nord.osm-gh.test
+        },
+        end: {
+          name: 'Test Sud-Est',
+          point: { type: 'Point', coordinates: [20.0, 40.0] } // dentro sud-est.osm-gh.test
+        }
+      });
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message', 'Route created successfully');
+    expect(response.body.route).toHaveProperty('distance');
+    expect(response.body.route).toHaveProperty('time');
+    expect(response.body.route).toHaveProperty('instructions');
   });
 });
