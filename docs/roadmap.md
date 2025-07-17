@@ -106,6 +106,16 @@ NGINX upstream intelligent dispatch (lat/lon in query).
 
 ---
 
+## 10. Testing & API multishard – ALTA (Sprint 2-3)
+- [x] Route POST `/api/recommended-spots` con logica multishard e test Jest
+- [x] Mock e test end-to-end con coordinate reali dai file `.poly` delle mappe di test
+- [x] Logging avanzato per debug routing
+- [x] Refactoring logica multishard in modulo riutilizzabile per test
+- [x] Correzione test middleware token mancante
+- [x] Test dummy per suite vuote
+
+---
+
 ## Checklist Sicurezza
 - [ ] helmet ✔️
 - [ ] cors whitelist ✔️
