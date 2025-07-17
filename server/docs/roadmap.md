@@ -172,3 +172,6 @@ gantt
     Database Camper       :2025-08-11, 14d
     Prezzi Carburante     :2025-08-25, 7d
     UX Premium            :2025-09-01, 7d
+```
+
+> **Target beta pubblica**: fine settimana 9.
