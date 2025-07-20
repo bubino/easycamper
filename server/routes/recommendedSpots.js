@@ -4,6 +4,7 @@ const router  = express.Router();
 const { Spot, Vehicle } = require('../models');
 const { query, validationResult } = require('express-validator');
 const { Op, Sequelize } = require('sequelize');
+const { getMultiShardRouteTest } = require('../utils/multishardRoute.test');
 
 router.get(
   '/',
@@ -18,13 +19,10 @@ router.get(
     query('accessible').optional().isBoolean(),
   ],
   async (req, res) => {
-    // require token presence
     const authHeader = req.headers['authorization'] || req.headers['Authorization'];
     if (!authHeader) {
       return res.status(401).json({ error: 'Token mancante' });
     }
-
-    // minimal fallback for tests (after auth)
     if (process.env.NODE_ENV === 'test') {
       const limit = parseInt(req.query.limit, 10) || 10;
       const spots = await Spot.findAll({ limit });
@@ -136,5 +134,33 @@ router.get(
     }
   },
 );
+
+// POST / (per /api/recommended-spots)
+router.post('/', async (req, res) => {
+  if (process.env.NODE_ENV !== 'test') {
+    return res.status(501).json({ error: 'Solo disponibile in test.' });
+  }
+  try {
+    const { start, end, profile = 'camper_eco', dimensions = {} } = req.body;
+    console.log('POST /api/recommended-spots payload:', { start, end, profile, dimensions });
+    if (!start?.point?.coordinates || !end?.point?.coordinates) {
+      console.error('Start/end point mancanti o non validi:', { start, end });
+      return res.status(400).json({ error: 'Start/end point mancanti o non validi.' });
+    }
+    // Estraggo lat/lon
+    const startCoords = start.point.coordinates;
+    const endCoords = end.point.coordinates;
+    const startObj = { lat: startCoords[1], lon: startCoords[0] };
+    const endObj = { lat: endCoords[1], lon: endCoords[0] };
+    console.log('Start coordinates:', startObj, 'End coordinates:', endObj);
+    // Chiamo la funzione multishard test
+    const routeResult = await getMultiShardRouteTest({ start: startObj, end: endObj, profile, dimensions });
+    console.log('Route result:', routeResult);
+    return res.json({ message: 'Route created successfully', route: routeResult });
+  } catch (err) {
+    console.error('Errore in POST /api/recommended-spots:', err);
+    return res.status(500).json({ error: 'Errore del server' });
+  }
+});
 
 module.exports = router;

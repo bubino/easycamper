@@ -9,12 +9,12 @@ beforeAll(async () => {
   await sequelize.sync({ force: true });
 
   await request(app).post('/auth/register')
-    .send({ username: 't1', password: 'p' });
+    .send({ username: 't1', email: 't1@example.com', password: 'p' });
 
   const { body } = await request(app).post('/auth/login')
-    .send({ username: 't1', password: 'p' });
+    .send({ email: 't1@example.com', password: 'p' });
 
-  token = body.accessToken;
+  token = body.token;
 
   const v = await request(app)
     .post('/vehicles')

@@ -40,7 +40,7 @@ describe('authenticateToken middleware', () => {
         authenticateToken(req, res, next);
 
         expect(res.statusCode).toBe(401);
-        expect(res._getData()).toBe('Unauthorized');
+        expect(res._getJSONData()).toEqual({ error: 'Token mancante' });
         expect(next).not.toHaveBeenCalled();
     });
 });

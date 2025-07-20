@@ -2,6 +2,7 @@
 const request   = require('supertest');
 const app       = require('../app');           // punta a app.js
 const { sequelize } = require('../models');
+const jwt = require('jsonwebtoken');
 
 let token;
 let vehicleId;
@@ -12,16 +13,24 @@ beforeAll(async () => {
   // 1) ricrea schema pulito
   await sequelize.sync({ force: true });
 
-  // 2) registra e fai login una sola volta
+  // 2) registra utente
   await request(app)
     .post('/auth/register')
-    .send({ username: 'test', password: 'password' }); // NON inviare l’id: lo crea il DB
+    .send({ username: 'test', email: 'test@example.com', password: 'password' });
 
+  // 3) verifica email
+  const { User } = require('../models');
+  const user = await User.findOne({ where: { email: 'test@example.com' } });
+  const verificationToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '1d' });
+  await request(app)
+    .get(`/auth/verify-email?token=${verificationToken}`);
+
+  // 4) login
   const res = await request(app)
     .post('/auth/login')
-    .send({ username: 'test', password: 'password' });
+    .send({ email: 'test@example.com', password: 'password' });
 
-  token = res.body.accessToken;
+  token = res.body.token;
 });
 
 afterAll(async () => {

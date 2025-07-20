@@ -1,185 +1,144 @@
 const express = require('express');
-const router = express.Router();
+const axios = require('axios');
+const axiosRetry = require('axios-retry').default;
+const pino = require('pino');
+const qs = require('qs');
 const config = require('../config/config');
-const { findShard, getOrderedShardNames } = require('utils/shardUtils');
-const { decodePolyline, encodePolyline, concatenatePolylines } = require('utils/polylineUtils');
-const { error: logError } = require('utils/logger');
-const ghAxios = require('services/ghAxios');
+const { decodePolyline, encodePolyline, concatenatePolylines } = require('../utils/polylineUtils');
+const router = express.Router();
 
-/**
- * @module route
- * @description Questo modulo gestisce il calcolo dei percorsi, includendo una logica
- * avanzata per il routing multi-shard.
- *
- * La logica di routing multi-shard opera come segue:
- * 1.  **Identificazione Shard**: Determina gli shard di partenza e di arrivo
- *     basandosi sulle coordinate geografiche.
- * 2.  **Ordinamento Shard**: Se il percorso attraversa più shard, calcola l'ordine
- *     sequenziale degli shard da attraversare (es. ovest -> centro -> sud-est).
- * 3.  **Calcolo Iterativo**: Itera attraverso la sequenza di shard:
- *     a.  **Calcolo Punto di Confine**: Per ogni shard intermedio, non calcola il percorso
- *         fino alla destinazione finale, ma fino al punto di intersezione con il confine
- *         dello shard successivo. Questo viene fatto dalla funzione `borderIntersection`,
- *         che implementa un'intersezione parametrica tra il segmento (punto corrente ->
- *         destinazione finale) e il lato di confine dello shard.
- *     b.  **Richiesta a GraphHopper**: Invia la richiesta di routing per il segmento
- *         calcolato all'istanza di GraphHopper competente per quello shard.
- *     c.  **Aggregazione Risultati**: Concatena le polyline, le istruzioni di navigazione
- *         e somma le distanze e i tempi di ogni segmento.
- * 4.  **Risposta Finale**: Una volta percorsi tutti i segmenti, restituisce un'unica
- *     rotta combinata all'utente.
- * 5.  **Gestione Errori**: Se la polyline restituita da uno shard non è decodificabile,
- *     l'errore viene loggato ma il processo continua, garantendo la resilienza del sistema.
- */
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+// Axios instance with retry for GraphHopper, con paramsSerializer per arrayFormat=repeat
+const ghAxios = axios.create({
+  paramsSerializer: params => qs.stringify(params, { arrayFormat: 'repeat' })
+});
+axiosRetry(ghAxios, {
+  retries: 3,
+  retryDelay: retryCount => retryCount * 1000,
+  retryCondition: error => axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error),
+  onRetry: (retryCount, error, requestConfig) => {
+    logger.warn({ retryCount, url: requestConfig.url, message: error.message }, 'Retry GH request');
+  }
+});
 
-function sharedSide(cur, next) {
-  const a = cur.bbox, b = next.bbox;
-  if (Math.abs(b.lonMin - a.lonMax) < 1e-4) return 'E';
-  if (Math.abs(b.lonMax - a.lonMin) < 1e-4) return 'W';
-  if (Math.abs(b.latMin - a.latMax) < 1e-4) return 'N';
-  if (Math.abs(b.latMax - a.latMin) < 1e-4) return 'S';
-  throw new Error(`Shard ${cur.name} non contiguo a ${next.name}`);
-}
-
-function borderIntersection(p1, p2, side, bbox) {
-  let t;
-  switch (side) {
-    case 'E': {
-      const lon = bbox.lonMax;
-      if (Math.abs(p2.lon - p1.lon) < 1e-7) return { lon, lat: p1.lat };
-      t = (lon - p1.lon) / (p2.lon - p1.lon);
-      return { lon, lat: p1.lat + (p2.lat - p1.lat) * t };
-    }
-    case 'W': {
-      const lon = bbox.lonMin;
-      if (Math.abs(p2.lon - p1.lon) < 1e-7) return { lon, lat: p1.lat };
-      t = (lon - p1.lon) / (p2.lon - p1.lon);
-      return { lon, lat: p1.lat + (p2.lat - p1.lat) * t };
-    }
-    case 'N': {
-      const lat = bbox.latMax;
-      if (Math.abs(p2.lat - p1.lat) < 1e-7) return { lat, lon: p1.lon };
-      t = (lat - p1.lat) / (p2.lat - p1.lat);
-      return { lat, lon: p1.lon + (p2.lon - p1.lon) * t };
-    }
-    case 'S': {
-      const lat = bbox.latMin;
-      if (Math.abs(p2.lat - p1.lat) < 1e-7) return { lat, lon: p1.lon };
-      t = (lat - p1.lat) / (p2.lat - p1.lat);
-      return { lat, lon: p1.lon + (p2.lon - p1.lon) * t };
+// Trova lo shard a cui appartiene un punto
+function findShard(point) {
+  const { lat, lon } = point;
+  for (const [name, shard] of Object.entries(config.graphhopper.shards)) {
+    const { latMin, latMax, lonMin, lonMax } = shard.bbox;
+    if (lat >= latMin && lat <= latMax && lon >= lonMin && lon <= lonMax) {
+      return name;
     }
   }
+  return null;
 }
 
-async function route(req, res, next) {
-  const { point, profile, details, instructions } = req.body;
+// Calcola il punto di confine lineare tra due punti su borderLat
+function computeBorderPoint(p1, p2, borderLat) {
+  if (Math.abs(p2.lat - p1.lat) < 1e-7) {
+    return { lat: borderLat, lon: p1.lon };
+  }
+  const t = (borderLat - p1.lat) / (p2.lat - p1.lat);
+  return { lat: borderLat, lon: p1.lon + (p2.lon - p1.lon) * t };
+}
+
+// Restituisce lista ordinata di shard da attraversare
+function getOrderedShardNames(startShard, endShard) {
+  const order = config.graphhopper.logicalOrder;
+  const si = order.indexOf(startShard);
+  const ei = order.indexOf(endShard);
+  if (si < 0 || ei < 0) throw new Error(`Shard sconosciuto: ${startShard} o ${endShard}`);
+  return si <= ei ? order.slice(si, ei + 1) : order.slice(ei, si + 1).reverse();
+}
+
+router.get('/', async (req, res, next) => {
   try {
-    // La logica ora è unificata, ma l'ambiente di test userà gli URL degli stub
-    const startPoint = { lat: parseFloat(point[0].split(',')[0]), lon: parseFloat(point[0].split(',')[1]) };
-    const endPoint = { lat: parseFloat(point[1].split(',')[0]), lon: parseFloat(point[1].split(',')[1]) };
+    const rawPoints = ([]).concat(req.query.point);
+    if (rawPoints.length < 2 || !req.query.profile) {
+      return res.status(400).json({ error: 'Specify at least two points and a profile.' });
+    }
+    const pts = rawPoints.map(p => {
+      const [lat, lon] = p.split(',').map(Number);
+      return { lat, lon };
+    });
+    const { profile } = req.query;
+    const dimensions = req.query.dimensions || {};
 
-    const startShard = findShard(startPoint.lat, startPoint.lon);
-    const endShard = findShard(endPoint.lat, endPoint.lon);
-
+    // Determine shards to traverse
+    const startShard = findShard(pts[0]);
+    const endShard = findShard(pts[pts.length - 1]);
     if (!startShard || !endShard) {
-      return res.status(400).json({ message: 'Punto di partenza o arrivo fuori dalle aree coperte.' });
+      return res.status(400).json({ error: 'Punto fuori dall’area di copertura europea.' });
     }
+    const shardOrder = getOrderedShardNames(startShard, endShard);
+    // Direzione: avanti se start precede end
+    const logical = config.graphhopper.logicalOrder;
+    const isForward = logical.indexOf(startShard) <= logical.indexOf(endShard);
 
-    // Se il percorso è all'interno di un singolo shard, esegui una richiesta diretta
-    if (startShard.name === endShard.name) {
-      const params = {
-        profile: profile || 'camper',
-        points_encoded: true,
-        point,
-        details,
-        instructions,
-      };
-      const response = await ghAxios.get(`${startShard.url}/route`, { params });
-      return res.json(response.data);
-    }
+    // Common GH params
+    const baseParams = {
+      profile,
+      details: 'distance,time,instructions',
+      points_encoded: true,
+      // attach camper dimensions if provided
+      ...(dimensions.height && { 'ch.max_height': dimensions.height }),
+      ...(dimensions.width && { 'ch.max_width': dimensions.width }),
+      ...(dimensions.length && { 'ch.max_length': dimensions.length }),
+      ...(dimensions.weight && { 'ch.max_weight': dimensions.weight })
+    };
 
-    // Logica per il routing multi-shard (usata sia in test che in produzione)
-    const shardOrder = getOrderedShardNames(startShard.name, endShard.name);
-
-    let segmentStart = startPoint;
-    const finalDestination = endPoint;
+    // Traverse shards
     let fullCoords = [];
     let fullInstructions = [];
     let totalDistance = 0;
     let totalTime = 0;
+    let segmentStart = pts[0];
 
     for (let i = 0; i < shardOrder.length; i++) {
       const shardName = shardOrder[i];
       const shardCfg = config.graphhopper.shards[shardName];
       const isLast = i === shardOrder.length - 1;
-      let segmentEnd;
+      const borderLat = isLast
+        ? pts[pts.length - 1].lat
+        : (isForward ? shardCfg.bbox.latMax : shardCfg.bbox.latMin);
+      const segmentEnd = isLast
+        ? pts[pts.length - 1]
+        : computeBorderPoint(segmentStart, pts[pts.length - 1], borderLat);
 
-      if (isLast) {
-        segmentEnd = finalDestination;
-      } else {
-        const nextShardName = shardOrder[i + 1];
-        const nextShardCfg = config.graphhopper.shards[nextShardName];
-        const side = sharedSide(shardCfg, nextShardCfg);
-        segmentEnd = borderIntersection(segmentStart, finalDestination, side, shardCfg.bbox);
-      }
-
+      // GH request params
       const params = {
-        profile: profile || 'camper',
-        points_encoded: true,
-        point: [`${segmentStart.lat},${segmentStart.lon}`, `${segmentEnd.lat},${segmentEnd.lon}`],
-        details: details || ['distance', 'time'],
-        instructions: instructions === undefined ? true : instructions,
+        ...baseParams,
+        point: [`${segmentStart.lat},${segmentStart.lon}`, `${segmentEnd.lat},${segmentEnd.lon}`]
       };
-
-      const url = `${shardCfg.url}/route`;
-      const resp = await ghAxios.get(url, { params });
-
-      if (!resp.data || !resp.data.paths || resp.data.paths.length === 0) {
-        throw new Error(`Risposta invalida o vuota da GraphHopper shard: ${shardName}`);
-      }
+      const resp = await ghAxios.get(shardCfg.url + '/route', { params });
       const path = resp.data.paths[0];
+      const segmentCoords = decodePolyline(path.points);
 
-      let segmentCoords;
-      try {
-        segmentCoords = decodePolyline(path.points);
-      } catch (e) {
-        logError({
-          message: `Errore decodifica polyline dallo shard ${shardName}`,
-          polyline: path.points,
-          error: e,
-        });
-        segmentCoords = []; // Procedi con un segmento vuoto per non bloccare il percorso
-      }
-
-      if (fullCoords.length === 0) {
-        fullCoords = segmentCoords;
-      } else {
+      // Merge coordinates and instructions
+      if (fullCoords.length) {
         fullCoords = concatenatePolylines(fullCoords, segmentCoords);
+      } else {
+        fullCoords = segmentCoords;
       }
-
-      if (path.instructions) {
-        fullInstructions.push(...path.instructions);
-      }
+      fullInstructions.push(...path.instructions);
       totalDistance += path.distance;
       totalTime += path.time;
 
-      segmentStart = segmentEnd;
+      // Next start is last actual point
+      segmentStart = segmentCoords[segmentCoords.length - 1];
     }
 
-    return res.json({
-      paths: [{
-        points: encodePolyline(fullCoords),
-        instructions: fullInstructions,
-        distance: totalDistance,
-        time: totalTime,
-      }],
-    });
+    // Respond with merged route
+    res.json({ paths: [{
+      points: encodePolyline(fullCoords),
+      instructions: fullInstructions,
+      distance: totalDistance,
+      time: totalTime
+    }] });
   } catch (err) {
-    logError({ error: err.message, stack: err.stack, requestBody: req.body }, 'Errore nel routing API');
+    logger.error({ error: err.message, stack: err.stack, requestQuery: req.query }, 'Errore nel routing API');
     next(err);
   }
-}
-
-router.post('/', route);
+});
 
 module.exports = router;
