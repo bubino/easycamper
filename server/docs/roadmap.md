@@ -32,19 +32,20 @@
 ---
 
 ## 3. Gestione Account Utente – PRIORITÀ ALTA
-- [ ] **Registrazione e Login:**
-  - [ ] Autenticazione tramite email/password.
-  - [ ] Autenticazione tramite Google, Apple, Facebook.
-  - [ ] Verifica email dopo registrazione (mail di conferma, login bloccato finché non verificata).
-  - [ ] Reset password tramite email (link sicuro, cambio password).
-  - [ ] Autenticazione a due fattori (2FA, opzionale).
-- [ ] **Gestione Account:**
-  - [ ] Cambia indirizzo email.
-  - [ ] Modifica password.
-  - [ ] Visualizza e modifica i dati personali.
-  - [ ] Gestione del veicolo (collegato al database camper).
-  - [ ] Gestione multi-device: supporto a più refresh token per utente, gestione device attivi.
-  - [ ] Rotazione e revoca refresh token: refresh token ruotati ad ogni uso, possibilità di revoca manuale da parte dell’utente.
+- [x] **Registrazione e Login:**
+  - [x] Autenticazione tramite email/password (completata, testata, funzionante)
+  - [ ] Autenticazione tramite Google e Apple (da fare)
+- [x] **Gestione Account:**
+  - [ ] Cambia indirizzo email (da fare)
+  - [x] Modifica password (completata, testata, funzionante)
+  - [x] Visualizza e modifica i dati personali (completata, testata, funzionante)
+  - [ ] Gestione del veicolo (collegato al database camper) (da fare)
+- [x] **Sicurezza e multi-device:**
+  - [x] Refresh token ruotati, massimo 2 device attivi, revoca manuale device (completata, testata, funzionante)
+  - [x] Audit log operazioni utente (completata, testata, funzionante)
+  - [x] Notifica login/revoca device (mock via console.log, completata)
+  - [x] Salvataggio IP e fingerprint (completata)
+  - [x] Test automatici sicurezza (completata)
 
 ---
 
