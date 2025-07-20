@@ -5,16 +5,27 @@ const { sequelize, Spot } = require('../../models');
 const app                  = require('../../app');      // punta ad app.js, non index.js
 const { seedUser }         = require('../helpers/db');
 
-let token;
+let token, userId;
 
 beforeAll(async () => {
   await sequelize.sync({ force: true });
-  token = await seedUser();
 
-  // semina un paio di spot SENZA specificare l'id
+  // registra utente con email, username, password
+  const res = await request(app)
+    .post('/auth/register')
+    .send({ username: 'u1', email: 'u1@example.com', password: 'testpass' });
+  userId = res.body.id;
+
+  // login e prendi il token
+  const loginRes = await request(app)
+    .post('/auth/login')
+    .send({ email: 'u1@example.com', password: 'testpass' });
+  token = loginRes.body.token;
+
+  // semina un paio di spot usando l'id reale dell'utente
   await Spot.bulkCreate([
     {
-      userId:    'u1',
+      userId,
       name:      'Camping A',
       latitude:   44.53,
       longitude:  10.93,
@@ -25,7 +36,7 @@ beforeAll(async () => {
       public:    true
     },
     {
-      userId:    'u1',
+      userId,
       name:      'Camping B',
       latitude:   45,
       longitude:  10,
