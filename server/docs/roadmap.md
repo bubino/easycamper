@@ -1,4 +1,4 @@
-# EasyCamper – Roadmap & Checklist (Aggiornata al 14/07/2025)
+# EasyCamper – Roadmap & Checklist (Aggiornata al 23/07/2025)
 
 ## 0. Vision
 «Un’unica app per camperisti con routing “camper-aware”, community spot, filtri avanzati, prezzi carburante in tempo reale e navigazione integrata in-car».
@@ -32,14 +32,20 @@
 ---
 
 ## 3. Gestione Account Utente – PRIORITÀ ALTA
-- [ ] **Registrazione e Login:**
-  - [ ] Autenticazione tramite email/password.
-  - [ ] Autenticazione tramite Google e Apple.
-- [ ] **Gestione Account:**
-  - [ ] Cambia indirizzo email.
-  - [ ] Modifica password.
-  - [ ] Visualizza e modifica i dati personali.
-  - [ ] Gestione del veicolo (collegato al database camper).
+- [x] **Registrazione e Login:**
+  - [x] Autenticazione tramite email/password (completata, testata, funzionante)
+  - [x] Autenticazione tramite Google, Apple e Facebook (completata, testata, funzionante)
+- [x] **Gestione Account:**
+  - [ ] Cambia indirizzo email (da fare)
+  - [x] Modifica password (completata, testata, funzionante)
+  - [x] Visualizza e modifica i dati personali (completata, testata, funzionante)
+  - [ ] Gestione del veicolo (collegato al database camper) (da fare)
+- [x] **Sicurezza e multi-device:**
+  - [x] Refresh token ruotati, massimo 2 device attivi, revoca manuale device (completata, testata, funzionante)
+  - [x] Audit log operazioni utente (completata, testata, funzionante)
+  - [x] Notifica login/revoca device (mock via console.log, completata)
+  - [x] Salvataggio IP e fingerprint (completata)
+  - [x] Test automatici sicurezza (completata)
 
 ---
 
