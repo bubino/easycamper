@@ -1,4 +1,4 @@
-# EasyCamper – Roadmap & Checklist (Aggiornata al 14/07/2025)
+# EasyCamper – Roadmap & Checklist (Aggiornata al 23/07/2025)
 
 ## 0. Vision
 «Un’unica app per camperisti con routing “camper-aware”, community spot, filtri avanzati, prezzi carburante in tempo reale e navigazione integrata in-car».
@@ -34,9 +34,13 @@
 ## 3. Gestione Account Utente – PRIORITÀ ALTA
 - [x] **Registrazione e Login:**
   - [x] Autenticazione tramite email/password (completata, testata, funzionante)
-  - [ ] Autenticazione tramite Google e Apple (da fare)
+  - [x] Autenticazione tramite Google, Apple e Facebook (completata, testata, funzionante)
 - [x] **Gestione Account:**
-  - [ ] Cambia indirizzo email (da fare)
+  - [ ] Cambia indirizzo email con verifica tramite link di conferma (vecchio e nuovo indirizzo)
+  - [ ] Log delle modifiche sensibili (cambio email, password, ecc.) nell’audit log
+  - [ ] Notifica all’utente su cambio email (vecchio e nuovo indirizzo)
+  - [ ] Rate limiting sulle operazioni sensibili (cambio email/password)
+  - [ ] Endpoint/UI per eliminazione account (compliance GDPR)
   - [x] Modifica password (completata, testata, funzionante)
   - [x] Visualizza e modifica i dati personali (completata, testata, funzionante)
   - [ ] Gestione del veicolo (collegato al database camper) (da fare)
@@ -149,41 +153,17 @@
 
 ---
 
-## 12. Mappe, Navigazione & Spot – ALTA
-- [ ] **Flutter Mapbox Integration:**
-  - [ ] Layer custom per visualizzazione spot (user, third-party, POI).
-  - [ ] Bottom sheet con azione "Naviga qui" che chiama l'API `/route`.
-  - [ ] Integrazione Mapbox Navigation SDK per navigazione turn-by-turn.
-  - [ ] Modulo dedicato per CarPlay e Android Auto (Mapbox Navigation SDK).
-  - [ ] Cache offline tile Mapbox per navigazione e consultazione spot senza connessione.
-  - [ ] Hive DB per storage locale e caching degli spot.
+## Checklist Sicurezza
+- [x] **helmet:** Attivo e configurato.
+- [x] **cors:** Attivo e configurato.
+- [ ] **express-rate-limit:** Installato, ma da attivare e configurare in `app.js`.
+- [ ] **xss-clean / hpp:** Da installare e configurare.
+- [ ] **JWT & Refresh Token:**
+  - **Stato Attuale:** Implementata logica base con token senza scadenza per facilitare i test.
+  - **Prossimi Passi (pre-produzione):** Implementare scadenza di 15 min per il JWT e logica di Refresh Token (scadenza 30 gg).
+- [ ] **Gestione Secrets:** Da verificare e centralizzare (es. Docker secrets, /opt/easycamper/.secrets).
 
 ---
-
-## Sicurezza Account & Audit Log (Aggiornamento 20/07/2025)
-
-### Best Practice Implementate
-- Audit log: tutte le operazioni di login, logout e revoca device vengono tracciate in `AuditLog` (userId, operazione, deviceInfo, IP, data/ora).
-- Notifica all’utente: ogni login da nuovo device o revoca device genera una notifica (mock via console.log, estendibile via email/push).
-- IP e fingerprint: ogni accesso salva IP e fingerprint (hash di User-Agent + IP) in `RefreshToken` e `AuditLog`.
-- Test di sicurezza: sono presenti test automatici per token scaduto, token manomesso, refresh da device non autorizzato (`server/__tests__/securityRefreshToken.test.js`).
-
-### Come visualizzare l’Audit Log
-- Query diretta su tabella `audit_logs` (admin):
-  - Esempio SQL: `SELECT * FROM audit_logs WHERE user_id = '...' ORDER BY created_at DESC;`
-- Possibile endpoint REST `/admin/auditlog` (da implementare per frontend admin).
-
-### Roadmap
-- [x] Audit log operazioni utente
-- [x] Notifica login/revoca device
-- [x] Salvataggio IP e fingerprint
-- [x] Test automatici sicurezza
-- [ ] Endpoint REST per visualizzazione audit log (admin)
-- [ ] Notifiche email/push reali
-
----
-
-Per dettagli tecnici vedi anche README.md e i test in `server/__tests__`.
 
 ## Milestones (Gantt semplificato aggiornato)
 ```mermaid
