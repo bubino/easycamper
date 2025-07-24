@@ -1,4 +1,4 @@
-# EasyCamper – Roadmap & Checklist (Aggiornata al 23/07/2025)
+# EasyCamper – Roadmap & Checklist (Aggiornata al 24/07/2025)
 
 ## 0. Vision
 «Un’unica app per camperisti con routing “camper-aware”, community spot, filtri avanzati, prezzi carburante in tempo reale e navigazione integrata in-car».
@@ -36,10 +36,10 @@
   - [x] Autenticazione tramite email/password (completata, testata, funzionante)
   - [x] Autenticazione tramite Google, Apple e Facebook (completata, testata, funzionante)
 - [x] **Gestione Account:**
-  - [ ] Cambia indirizzo email con verifica tramite link di conferma (vecchio e nuovo indirizzo)
-  - [ ] Log delle modifiche sensibili (cambio email, password, ecc.) nell’audit log
-  - [ ] Notifica all’utente su cambio email (vecchio e nuovo indirizzo)
-  - [ ] Rate limiting sulle operazioni sensibili (cambio email/password)
+  - [x] Cambia indirizzo email con verifica tramite link di conferma (vecchio e nuovo indirizzo, token, scadenza, blocco login con email non verificata, test automatici)
+  - [x] Log delle modifiche sensibili (cambio email, password, ecc.) nell’audit log
+  - [x] Notifica all’utente su cambio email (vecchio e nuovo indirizzo)
+  - [x] Rate limiting sulle operazioni sensibili (cambio email/password)
   - [ ] Endpoint/UI per eliminazione account (compliance GDPR)
   - [x] Modifica password (completata, testata, funzionante)
   - [x] Visualizza e modifica i dati personali (completata, testata, funzionante)
