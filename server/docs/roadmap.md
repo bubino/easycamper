@@ -1,4 +1,4 @@
-# EasyCamper – Roadmap & Checklist (Aggiornata al 24/07/2025)
+# EasyCamper – Roadmap & Checklist (Aggiornata al 26/07/2025)
 
 ## 0. Vision
 «Un’unica app per camperisti con routing “camper-aware”, community spot, filtri avanzati, prezzi carburante in tempo reale e navigazione integrata in-car».
@@ -32,24 +32,27 @@
 ---
 
 ## 3. Gestione Account Utente – PRIORITÀ ALTA
-- [x] **Registrazione e Login:**
+
+- [x] Registrazione e Login:
   - [x] Autenticazione tramite email/password (completata, testata, funzionante)
   - [x] Autenticazione tramite Google, Apple e Facebook (completata, testata, funzionante)
-- [x] **Gestione Account:**
+- [x] Gestione Account:
   - [x] Cambia indirizzo email con verifica tramite link di conferma (vecchio e nuovo indirizzo, token, scadenza, blocco login con email non verificata, test automatici)
-  - [x] Log delle modifiche sensibili (cambio email, password, ecc.) nell’audit log
+  - [x] Log delle modifiche sensibili (cambio email, password, ecc.) nell’audit log (parzialmente fatto, da estendere GDPR)
   - [x] Notifica all’utente su cambio email (vecchio e nuovo indirizzo)
   - [x] Rate limiting sulle operazioni sensibili (cambio email/password)
-  - [ ] Endpoint/UI per eliminazione account (compliance GDPR)
+  - [x] Endpoint e test automatici per cancellazione account utente (compliance GDPR)
   - [x] Modifica password (completata, testata, funzionante)
   - [x] Visualizza e modifica i dati personali (completata, testata, funzionante)
-  - [ ] Gestione del veicolo (collegato al database camper) (da fare)
-- [x] **Sicurezza e multi-device:**
-  - [x] Refresh token ruotati, massimo 2 device attivi, revoca manuale device (completata, testata, funzionante)
-  - [x] Audit log operazioni utente (completata, testata, funzionante)
-  - [x] Notifica login/revoca device (mock via console.log, completata)
-  - [x] Salvataggio IP e fingerprint (completata)
-  - [x] Test automatici sicurezza (completata)
+  - [x] Gestione del veicolo (collegato al database camper) (completata, CRUD e modello testati al 26/07/2025, validazione e test automatici stabili)
+  - [x] Esportazione dei dati personali su richiesta dell’utente (GDPR, endpoint e test automatici)
+- [ ] Da completare / Migliorare:
+  - [ ] Invio email reale con link di conferma cambio email
+  - [ ] UI lato frontend per gestione cambio email
+  - [ ] UI per la gestione dei consensi e delle richieste privacy (GDPR)
+  - [ ] Informative privacy aggiornate (GDPR)
+  - [ ] Log e tracciamento delle operazioni sensibili (GDPR, esteso)
+  - [ ] Cancellazione/anonimizzazione di tutti i dati collegati all’utente (non solo l’account principale) (GDPR)
 
 ---
 
@@ -150,6 +153,21 @@
   - [ ] Abilitare l'auto-scaling dei pod in base al carico.
 - [ ] **Monitoraggio:**
   - [ ] Integrare strumenti di monitoraggio (es. Prometheus, Grafana) per tenere traccia delle prestazioni di MinIO e dei pod Kubernetes.
+
+---
+
+## Miglioramenti gestione veicoli e specifiche tecniche
+
+- [x] Validazione avanzata su tutti i campi obbligatori e opzionali (formati, range, valori accettabili)
+- [x] Ownership e permessi: messaggi di errore chiari, logging tentativi non autorizzati
+- [x] Test automatici edge case: dati mancanti, formati errati, accessi da utenti diversi, errori DB, autenticazione (test superati e stabili al 26/07/2025)
+- [x] Documentazione API dettagliata: parametri, errori, payload di esempio, specifiche tecniche
+- [x] Gestione dati correlati: cascade delete di specifiche tecniche e interventi manutenzione quando si cancella un veicolo
+- [x] Logging strutturato per tutte le operazioni CRUD e errori
+- [x] Paginazione e filtri su GET /vehicles per performance
+- [x] Risposte API coerenti e dettagliate
+- [x] Refactoring middleware per validazione e ownership
+- [x] Sicurezza: protezione da accessi non autorizzati, injection, attacchi comuni
 
 ---
 
