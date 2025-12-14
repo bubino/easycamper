@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     username: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       unique: true
     },
     email:        { type: DataTypes.STRING, allowNull: false, unique: true },
@@ -33,6 +33,18 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false
+    },
+    emailChangeToken: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    emailChangeNew: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    emailChangeRequestedAt: {
+      type: DataTypes.DATE,
+      allowNull: true
     }
   }, {
     sequelize,

@@ -28,7 +28,7 @@ describe('authenticateToken middleware', () => {
         authenticateToken(req, res, next);
 
         expect(res.statusCode).toBe(403);
-        expect(res._getData()).toBe('Forbidden');
+        expect(res._getJSONData()).toEqual({ error: 'Token non valido' });
         expect(next).not.toHaveBeenCalled();
     });
 

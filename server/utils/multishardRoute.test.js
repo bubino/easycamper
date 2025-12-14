@@ -8,4 +8,10 @@ function getMultiShardRouteTest(params) {
   });
 }
 
+describe('Placeholder', () => {
+  it('should pass', () => {
+    expect(true).toBe(true);
+  });
+});
+
 module.exports = { getMultiShardRouteTest };

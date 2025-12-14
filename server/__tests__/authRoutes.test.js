@@ -1,3 +1,5 @@
+// Mock social providers PRIMA di importare app.js
+// RIMOSSI i mock dei provider social (google-auth-library, apple-signin-auth, fetch)
 jest.mock('../routes/email', () => ({
   sendVerificationEmail: jest.fn().mockResolvedValue(),
   sendResetPasswordEmail: jest.fn().mockResolvedValue()
@@ -11,7 +13,7 @@ const jwt = require('jsonwebtoken');
 
 describe('Auth routes (JWT + refresh token)', () => {
   beforeEach(async () => {
-    await sequelize.sync({ force: true });
+    await sequelize.sync();
   });
   afterAll(async () => {
     await sequelize.close();
@@ -320,6 +322,35 @@ describe('Auth routes (JWT + refresh token)', () => {
       .send({ email: 'resetuser@example.com', password: 'NewPassword123!' });
     expect(loginRes.statusCode).toBe(200);
     expect(loginRes.body).toHaveProperty('token');
+  });
+
+  test('DELETE /auth/account cancella l’account autenticato', async () => {
+    // 1. Registra e verifica un nuovo utente
+    await request(app)
+      .post('/auth/register')
+      .send({ username: 'deleteuser', email: 'delete@example.com', password: 'Password123!' });
+    const user = await User.findOne({ where: { email: 'delete@example.com' } });
+    const verificationToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '1d' });
+    await request(app).get(`/auth/verify-email?token=${verificationToken}`);
+
+    // 2. Login per ottenere il JWT
+    const loginRes = await request(app)
+      .post('/auth/login')
+      .send({ email: 'delete@example.com', password: 'Password123!' });
+    expect(loginRes.statusCode).toBe(200);
+    const token = loginRes.body.token;
+
+    // 3. Cancella l’account
+    const deleteRes = await request(app)
+      .delete('/auth/account')
+      .set('Authorization', `Bearer ${token}`);
+    expect(deleteRes.statusCode).toBe(200);
+    expect(deleteRes.body).toHaveProperty('message');
+    expect(deleteRes.body.message).toMatch(/Account cancellato/);
+
+    // 4. Verifica che l’utente non esista più
+    const deletedUser = await User.findOne({ where: { email: 'delete@example.com' } });
+    expect(deletedUser).toBeNull();
   });
 });
 

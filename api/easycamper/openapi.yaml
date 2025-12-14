@@ -1,0 +1,716 @@
+openapi: 3.0.0
+info:
+  title: Easycamper API
+  version: 0.1.0
+servers:
+  - url: http://localhost:5000
+    description: Mock server
+
+paths:
+  /vehicles:
+    get:
+      summary: Lista dei veicoli dell'utente
+      responses:
+        '200':
+          description: Array di veicoli
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vehicle'
+    post:
+      summary: Registra un nuovo veicolo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewVehicle'
+      responses:
+        '201':
+          description: Veicolo creato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+
+  /vehicles/{vehicleId}:
+    get:
+      summary: Dettaglio di un veicolo
+      parameters:
+        - in: path
+          name: vehicleId
+          required: true
+          schema:
+            type: string
+          description: ID del veicolo
+      responses:
+        '200':
+          description: Dati del veicolo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '404':
+          description: Veicolo non trovato
+
+  /spots:
+    get:
+      summary: Elenco aree di sosta
+      parameters:
+        - in: query
+          name: lat
+          required: true
+          schema:
+            type: number
+          description: Latitudine utente
+        - in: query
+          name: lng
+          required: true
+          schema:
+            type: number
+          description: Longitudine utente
+        - in: query
+          name: filters
+          required: false
+          schema:
+            type: object
+          description: Filtro servizi/disponibilità
+      responses:
+        '200':
+          description: Array di spot
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Spot'
+
+  /spots/{spotId}:
+    get:
+      summary: Dettaglio di un’area di sosta
+      parameters:
+        - in: path
+          name: spotId
+          required: true
+          schema:
+            type: string
+          description: ID dello spot
+      responses:
+        '200':
+          description: Dati dello spot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Spot'
+        '404':
+          description: Spot non trovato
+
+  /fuel:
+    get:
+      summary: Elenco distributori di carburante vicini
+      parameters:
+        - in: query
+          name: lat
+          required: true
+          schema:
+            type: number
+          description: Latitudine utente
+        - in: query
+          name: lng
+          required: true
+          schema:
+            type: number
+          description: Longitudine utente
+        - in: query
+          name: type
+          required: false
+          schema:
+            type: string
+            enum: [benzina, diesel, gpl]
+          description: Tipo di carburante da filtrare
+      responses:
+        '200':
+          description: Array di distributori
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FuelStation'
+
+  /fuel/{stationId}:
+    get:
+      summary: Dettaglio di un distributore
+      parameters:
+        - in: path
+          name: stationId
+          required: true
+          schema:
+            type: string
+          description: ID del distributore
+      responses:
+        '200':
+          description: Dati del distributore
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FuelStation'
+        '404':
+          description: Distributore non trovato
+
+  /events:
+    get:
+      summary: Elenco eventi e punti di interesse dinamici
+      parameters:
+        - in: query
+          name: lat
+          required: true
+          schema:
+            type: number
+          description: Latitudine utente
+        - in: query
+          name: lng
+          required: true
+          schema:
+            type: number
+          description: Longitudine utente
+        - in: query
+          name: radius
+          required: false
+          schema:
+            type: number
+          description: Raggio di ricerca in km
+        - in: query
+          name: date
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Data desiderata (YYYY-MM-DD)
+      responses:
+        '200':
+          description: Lista di eventi/POI
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+
+  /trips:
+    post:
+      summary: Crea un nuovo viaggio multi-tappa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewTrip'
+      responses:
+        '201':
+          description: Viaggio creato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+    get:
+      summary: Elenco viaggi dell'utente
+      parameters:
+        - in: query
+          name: userId
+          required: true
+          schema:
+            type: string
+          description: ID dell'utente
+      responses:
+        '200':
+          description: Lista di viaggi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trip'
+
+  /trips/{tripId}:
+    get:
+      summary: Dettaglio di un viaggio
+      parameters:
+        - in: path
+          name: tripId
+          required: true
+          schema:
+            type: string
+          description: ID del viaggio
+      responses:
+        '200':
+          description: Dati del viaggio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '404':
+          description: Viaggio non trovato
+
+  /journal:
+    post:
+      summary: Aggiungi una voce al diario di un viaggio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewJournalEntry'
+      responses:
+        '201':
+          description: Voce di diario creata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntry'
+    get:
+      summary: Elenco voci di diario per un viaggio
+      parameters:
+        - in: query
+          name: tripId
+          required: true
+          schema:
+            type: string
+          description: ID del viaggio
+      responses:
+        '200':
+          description: Lista delle voci di diario
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JournalEntry'
+
+  /journal/{entryId}:
+    get:
+      summary: Dettaglio di una voce di diario
+      parameters:
+        - in: path
+          name: entryId
+          required: true
+          schema:
+            type: string
+          description: ID della voce
+      responses:
+        '200':
+          description: Voce di diario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntry'
+        '404':
+          description: Voce non trovata
+
+  /maintenance:
+    get:
+      summary: Elenco interventi di manutenzione
+      parameters:
+        - in: query
+          name: vehicleId
+          required: true
+          schema:
+            type: string
+          description: ID del veicolo
+      responses:
+        '200':
+          description: Lista di interventi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MaintenanceEntry'
+    post:
+      summary: Registra un nuovo intervento di manutenzione
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewMaintenanceEntry'
+      responses:
+        '201':
+          description: Intervento creato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceEntry'
+
+  /sos:
+    post:
+      summary: Invia richiesta di assistenza/emergenza
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SOSRequest'
+      responses:
+        '201':
+          description: SOS inviato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SOSRequest'
+
+components:
+  schemas:
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "abc123"
+        userId:
+          type: string
+          example: "user456"
+        type:
+          type: string
+          enum: [camper, van, caravan]
+        make:
+          type: string
+          example: "Fiat"
+        model:
+          type: string
+          example: "Ducato"
+        height:
+          type: number
+          description: Altezza in metri
+          example: 3.0
+        length:
+          type: number
+          description: Lunghezza in metri
+          example: 7.2
+        weight:
+          type: number
+          description: Peso in tonnellate
+          example: 3.5
+        imageUrl:
+          type: string
+          format: uri
+      required:
+        - id
+        - userId
+        - type
+        - make
+        - model
+
+    NewVehicle:
+      type: object
+      properties:
+        userId:
+          type: string
+        type:
+          type: string
+          enum: [camper, van, caravan]
+        make:
+          type: string
+        model:
+          type: string
+        height:
+          type: number
+        length:
+          type: number
+        weight:
+          type: number
+      required:
+        - userId
+        - type
+        - make
+        - model
+
+    Spot:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "spot789"
+        name:
+          type: string
+          example: "Area di sosta Lago Maggiore"
+        coords:
+          type: object
+          properties:
+            lat:
+              type: number
+              example: 45.9
+            lng:
+              type: number
+              example: 8.5
+        services:
+          type: array
+          items:
+            type: string
+            example: "acqua"
+        availability:
+          type: string
+          enum: [free, occupied]
+        rating:
+          type: number
+          format: float
+          example: 4.2
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+      required:
+        - id
+        - name
+        - coords
+
+    FuelStation:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "fuel001"
+        name:
+          type: string
+          example: "Esso Via Roma"
+        coords:
+          type: object
+          properties:
+            lat:
+              type: number
+              example: 45.9
+            lng:
+              type: number
+              example: 8.5
+        type:
+          type: string
+          enum: [benzina, diesel, gpl]
+          example: "diesel"
+        price:
+          type: number
+          format: float
+          example: 1.789
+        openHours:
+          type: string
+          example: "06:00-22:00"
+      required:
+        - id
+        - name
+        - coords
+        - type
+        - price
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "evt123"
+        title:
+          type: string
+          example: "Fiera del Camper"
+        description:
+          type: string
+          example: "Evento annuale dedicato ai camper, con esposizioni e workshop."
+        coords:
+          type: object
+          properties:
+            lat:
+              type: number
+              example: 45.8
+            lng:
+              type: number
+              example: 8.4
+        startDate:
+          type: string
+          format: date
+          example: "2025-06-10"
+        endDate:
+          type: string
+          format: date
+          example: "2025-06-15"
+        category:
+          type: string
+          example: "fiera"
+        source:
+          type: string
+          example: "tripadvisor"
+      required:
+        - id
+        - title
+        - coords
+        - startDate
+        - endDate
+
+    Trip:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "trip001"
+        userId:
+          type: string
+          example: "user456"
+        name:
+          type: string
+          example: "Tour Italia 2025"
+        stops:
+          type: array
+          items:
+            type: string
+            example: "spot789"
+        startDate:
+          type: string
+          format: date
+          example: "2025-07-01"
+        endDate:
+          type: string
+          format: date
+          example: "2025-07-10"
+      required:
+        - id
+        - userId
+        - stops
+        - startDate
+        - endDate
+
+    NewTrip:
+      type: object
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        stops:
+          type: array
+          items:
+            type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+      required:
+        - userId
+        - stops
+        - startDate
+        - endDate
+
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "je001"
+        tripId:
+          type: string
+          example: "trip001"
+        date:
+          type: string
+          format: date
+          example: "2025-07-02"
+        text:
+          type: string
+          example: "Visita al lago, paesaggi mozzafiato."
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+      required:
+        - id
+        - tripId
+        - date
+        - text
+
+    NewJournalEntry:
+      type: object
+      properties:
+        tripId:
+          type: string
+        date:
+          type: string
+          format: date
+        text:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+      required:
+        - tripId
+        - date
+        - text
+
+    MaintenanceEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "me001"
+        vehicleId:
+          type: string
+          example: "abc123"
+        date:
+          type: string
+          format: date
+          example: "2025-08-01"
+        type:
+          type: string
+          example: "tagliando"
+        notes:
+          type: string
+          example: "Cambio olio e filtri"
+      required:
+        - id
+        - vehicleId
+        - date
+        - type
+
+    NewMaintenanceEntry:
+      type: object
+      properties:
+        vehicleId:
+          type: string
+        date:
+          type: string
+          format: date
+        type:
+          type: string
+        notes:
+          type: string
+      required:
+        - vehicleId
+        - date
+        - type
+
+    SOSRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "sos001"
+        userId:
+          type: string
+          example: "user456"
+        vehicleId:
+          type: string
+          example: "abc123"
+        message:
+          type: string
+          example: "Ho forato, assistenza stradale richiesta."
+        date:
+          type: string
+          format: date-time
+          example: "2025-07-05T14:30:00Z"
+      required:
+        - id
+        - userId
+        - vehicleId
+        - message
+        - date

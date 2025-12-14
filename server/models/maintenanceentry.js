@@ -32,12 +32,15 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.UUID,
         allowNull: true,
       },
-      description: {
+      type: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      notes: {
         type: DataTypes.TEXT,
         allowNull: true,
       },
       date: DataTypes.DATEONLY,
-      cost: DataTypes.FLOAT,
     },
     {
       sequelize,

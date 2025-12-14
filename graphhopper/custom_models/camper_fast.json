@@ -1,0 +1,43 @@
+{
+  "priority": [
+    {
+      "if": "road_class == MOTORWAY",
+      "multiply_by": "1.2"
+    },
+    {
+      "if": "road_class == TRUNK",
+      "multiply_by": "1.1"
+    },
+    {
+      "if": "road_class == PRIMARY",
+      "multiply_by": "1.05"
+    },
+    {
+      "if": "road_class == TRACK || road_class == PATH",
+      "multiply_by": "0.1"
+    },
+    {
+      "if": "max_height < 3.5",
+      "multiply_by": "0"
+    },
+    {
+      "if": "max_weight < 3.5",
+      "multiply_by": "0"
+    }
+  ],
+  "speed": [
+    {
+      "if": "road_class == MOTORWAY",
+      "multiply_by": "0.9"
+    },
+    {
+      "if": "road_class == RESIDENTIAL",
+      "multiply_by": "0.8"
+    },
+    {
+      "if": "surface == UNPAVED || surface == GRAVEL",
+      "multiply_by": "0.6"
+    }
+  ],
+  "areas": []
+}

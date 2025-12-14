@@ -2,22 +2,22 @@
 
 module.exports = {
   async up (queryInterface, Sequelize) {
-    // Assicurati che l’estensione uuid-ossp sia già abilitata
-    await queryInterface.createTable('users', {
+    const dialect = queryInterface.sequelize.getDialect();
+    await queryInterface.createTable('Users', {
       id: {
         type: Sequelize.UUID,
-        defaultValue: Sequelize.literal('uuid_generate_v4()'),
+        defaultValue: dialect === 'postgres' ? Sequelize.literal('uuid_generate_v4()') : Sequelize.UUIDV4,
         allowNull: false,
         primaryKey: true
       },
       email:        { type: Sequelize.STRING, allowNull: false, unique: true },
       passwordHash: { type: Sequelize.STRING, allowNull: false },
-      created_at:   { type: Sequelize.DATE,   allowNull: false, defaultValue: Sequelize.literal('NOW()') },
-      updated_at:   { type: Sequelize.DATE,   allowNull: false, defaultValue: Sequelize.literal('NOW()') }
+      created_at:   { type: Sequelize.DATE, allowNull: false, defaultValue: dialect === 'postgres' ? Sequelize.literal('NOW()') : Sequelize.NOW },
+      updated_at:   { type: Sequelize.DATE, allowNull: false, defaultValue: dialect === 'postgres' ? Sequelize.literal('NOW()') : Sequelize.NOW }
     });
   },
 
   async down (queryInterface, Sequelize) {
-    await queryInterface.dropTable('users');
+    await queryInterface.dropTable('Users');
   }
 };

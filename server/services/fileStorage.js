@@ -2,6 +2,7 @@
 
 const path   = require('path');
 const { Client } = require('minio');
+const { Readable } = require('stream');
 
 // carica .env o .env.test in base a NODE_ENV
 require('dotenv').config({
@@ -81,7 +82,9 @@ async function upload(key, bufferOrStream, meta = {}) {
 function download(key) {
   if (isTest) {
     try {
-      return _testStorage[key]?.bufferOrStream || null;
+      const buf = _testStorage[key]?.bufferOrStream || null;
+      if (!buf) return null;
+      return Readable.from(buf);
     } catch {
       return null;
     }

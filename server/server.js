@@ -7,8 +7,12 @@ const port = process.env.PORT || 3000;
 
 // Prima apri la connessione al DB
 db.sequelize.authenticate()
-  .then(() => {
+  .then(async () => {
     console.log('🎯 DB connesso');
+    if (process.env.NODE_ENV === 'development') {
+      await db.sequelize.sync({ alter: true });
+      console.log('🔄 Database schema aggiornato (alter)');
+    }
     // --- SYNC DISABILITATA PER DEBUG POSTGRES ---
     // return db.User.sync({ force: true })
     //   .then(() => db.Vehicle.sync({ force: true }))

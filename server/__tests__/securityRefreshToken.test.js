@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 
 describe('Sicurezza refresh token', () => {
   beforeAll(async () => {
-    await sequelize.sync({ force: true });
+    await sequelize.sync();
     // Crea utente e verifica email
     await request(app)
       .post('/auth/register')

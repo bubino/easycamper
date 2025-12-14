@@ -2,10 +2,11 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
+    const dialect = queryInterface.sequelize.getDialect();
     await queryInterface.createTable('refresh_tokens', {
       id: {
         type: Sequelize.UUID,
-        defaultValue: Sequelize.literal('uuid_generate_v4()'),
+        defaultValue: dialect === 'postgres' ? Sequelize.literal('uuid_generate_v4()') : Sequelize.UUIDV4,
         primaryKey: true,
         allowNull: false
       },

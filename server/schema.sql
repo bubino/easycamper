@@ -137,6 +137,42 @@ CREATE TABLE public."Vehicles" (
 ALTER TABLE public."Vehicles" OWNER TO easycamper;
 
 --
+-- Name: refresh_tokens; Type: TABLE; Schema: public; Owner: easycamper
+--
+
+CREATE TABLE public."refresh_tokens" (
+    id character varying(255) PRIMARY KEY,
+    "userId" character varying(255) NOT NULL,
+    token character varying(512) NOT NULL,
+    deviceInfo character varying(255),
+    ip character varying(255),
+    fingerprint character varying(255),
+    "createdAt" timestamp with time zone NOT NULL,
+    "updatedAt" timestamp with time zone NOT NULL,
+    "expiresAt" timestamp with time zone
+);
+
+ALTER TABLE public."refresh_tokens" OWNER TO easycamper;
+
+--
+-- Name: VehicleModels; Type: TABLE; Schema: public; Owner: easycamper
+--
+
+CREATE TABLE IF NOT EXISTS public."VehicleModels" (
+    id character varying(255) PRIMARY KEY,
+    brand character varying(255) NOT NULL,
+    model character varying(255) NOT NULL,
+    year_from integer,
+    length_m double precision,
+    height_m double precision,
+    weight_kg double precision,
+    type character varying(50),
+    brand_slug character varying(255)
+);
+
+ALTER TABLE public."VehicleModels" OWNER TO easycamper;
+
+--
 -- Name: MaintenanceEntries MaintenanceEntries_pkey; Type: CONSTRAINT; Schema: public; Owner: easycamper
 --
 

@@ -8,7 +8,7 @@ const { seedUser }         = require('../helpers/db');
 let token, userId;
 
 beforeAll(async () => {
-  await sequelize.sync({ force: true });
+  await sequelize.sync();
 
   // registra utente con email, username, password
   const res = await request(app)
@@ -16,10 +16,20 @@ beforeAll(async () => {
     .send({ username: 'u1', email: 'u1@example.com', password: 'testpass' });
   userId = res.body.id;
 
+  // Verifica email
+  const { User } = require('../../models');
+  const jwt = require('jsonwebtoken');
+  const user = await User.findOne({ where: { email: 'u1@example.com' } });
+  const verificationToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '1d' });
+  await request(app).get(`/auth/verify-email?token=${verificationToken}`);
+
   // login e prendi il token
   const loginRes = await request(app)
     .post('/auth/login')
     .send({ email: 'u1@example.com', password: 'testpass' });
+  if (!loginRes.body || !loginRes.body.token) {
+    throw new Error('Login fallita nei test: token JWT non ricevuto. Risposta: ' + JSON.stringify(loginRes.body));
+  }
   token = loginRes.body.token;
 
   // semina un paio di spot usando l'id reale dell'utente

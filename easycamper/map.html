@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EasyCamper - Calcolo Percorso</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; font-family: sans-serif; }
+        #map { width: 100%; height: 100%; cursor: crosshair !important; } /* NUOVO: Cursore a croce */
+        #controls { position: absolute; top: 10px; left: 50px; z-index: 1000; background: white; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        #route-info { position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(255, 255, 255, 0.8); padding: 10px; border-radius: 5px; border: 1px solid #ccc; min-width: 200px; }
+        #controls div { margin-bottom: 5px; }
+        #controls label { display: block; font-weight: bold; }
+        #controls input, #controls select { width: 200px; padding: 5px; }
+        #controls button { width: 100%; padding: 8px; color: white; border: none; cursor: pointer; }
+        
+        .waypoint-entry { display: flex; align-items: center; margin-bottom: 5px; }
+        .waypoint-entry input { flex-grow: 1; }
+        .waypoint-entry button { width: auto; padding: 5px 8px; margin-left: 5px; background-color: #f44336; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="controls">
+    <p style="margin-top:0;">Clicca sulla mappa per aggiungere punti.</p>
+    <div>
+        <label for="start">Partenza</label>
+        <input type="text" id="start" placeholder="Clicca sulla mappa o inserisci lat,lon" readonly>
+    </div>
+    
+    <div id="waypoints-container"></div>
+
+    <div>
+        <label for="end">Arrivo</label>
+        <input type="text" id="end" placeholder="Clicca sulla mappa o inserisci lat,lon" readonly>
+    </div>
+    
+    <div>
+        <label for="profile">Profilo di Guida</label>
+        <select id="profile" onchange="calculateRoute()">
+            <option value="camper_fast">Veloce</option>
+            <option value="camper_scenic" selected>Panoramico</option>
+            <option value="camper_eco">Ecologico</option>
+        </select>
+    </div>
+    <!-- NUOVO: Pulsante per pulire il percorso -->
+    <button id="clear-btn" onclick="clearRoute()" style="background-color: #f44336;">Pulisci Percorso</button>
+</div>
+
+<div id="route-info"></div>
+
+<script>
+    const map = L.map('map').setView([48.5, 7.0], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    let routeLayer = null;
+    let markerLayer = L.layerGroup().addTo(map);
+    const infoBox = document.getElementById('route-info');
+    const waypointsContainer = document.getElementById('waypoints-container');
+    const startInput = document.getElementById('start');
+    const endInput = document.getElementById('end');
+
+    // NUOVO: Logica per gestire i click sulla mappa
+    map.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+        const coordsString = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+
+        if (!startInput.value) {
+            startInput.value = coordsString;
+        } else if (!endInput.value) {
+            endInput.value = coordsString;
+        } else {
+            addWaypoint(coordsString);
+        }
+        calculateRoute();
+    });
+
+    // NUOVO: Funzione per pulire tutto
+    function clearRoute() {
+        startInput.value = '';
+        endInput.value = '';
+        waypointsContainer.innerHTML = '';
+        if (routeLayer) map.removeLayer(routeLayer);
+        markerLayer.clearLayers();
+        infoBox.innerHTML = '';
+    }
+
+    function addWaypoint(coords = '') {
+        const waypointId = Date.now();
+        const div = document.createElement('div');
+        div.className = 'waypoint-entry';
+        div.id = `waypoint-${waypointId}`;
+        div.innerHTML = `<input type="text" class="waypoint-input" value="${coords}" readonly><button type="button" onclick="removeWaypoint(${waypointId})">X</button>`;
+        waypointsContainer.appendChild(div);
+    }
+
+    function removeWaypoint(id) {
+        const waypointToRemove = document.getElementById(`waypoint-${id}`);
+        if (waypointToRemove) {
+            waypointsContainer.removeChild(waypointToRemove);
+            calculateRoute(); // Ricalcola il percorso dopo aver rimosso una tappa
+        }
+    }
+
+    async function calculateRoute() {
+        const points = [];
+        if (startInput.value) points.push(startInput.value);
+
+        document.querySelectorAll('.waypoint-input').forEach(input => {
+            if (input.value) points.push(input.value);
+        });
+
+        if (endInput.value) points.push(endInput.value);
+
+        if (points.length < 2) {
+            if (routeLayer) map.removeLayer(routeLayer);
+            markerLayer.clearLayers();
+            // Disegna solo il marcatore di partenza se esiste
+            if (points.length === 1) {
+                const latLng = points[0].split(',').map(Number);
+                L.marker(latLng).addTo(markerLayer);
+            }
+            return;
+        }
+        
+        const profile = document.getElementById('profile').value;
+        infoBox.innerHTML = 'Calcolo in corso...';
+
+        try {
+            const params = new URLSearchParams();
+            points.forEach(p => params.append('point', p));
+            params.append('profile', profile);
+            
+            const apiUrl = `http://localhost:3001/route?${params.toString()}`;
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error(await response.text());
+            
+            const routeData = await response.json();
+
+            if (routeLayer) map.removeLayer(routeLayer);
+            markerLayer.clearLayers();
+
+            const path = routeData.paths[0];
+            const coordinates = path.points.coordinates;
+            const latLngs = coordinates.map(coord => [coord[1], coord[0]]);
+
+            routeLayer = L.polyline(latLngs, { color: 'blue', weight: 5 }).addTo(map);
+            map.fitBounds(routeLayer.getBounds());
+
+            const waypoints = path.snapped_waypoints.coordinates;
+            waypoints.forEach((coord, index) => {
+                const latLng = [coord[1], coord[0]];
+                let marker;
+                if (index === 0) marker = L.marker(latLng, { title: 'Partenza' });
+                else if (index === waypoints.length - 1) marker = L.marker(latLng, { title: 'Arrivo' });
+                else marker = L.marker(latLng, { title: `Tappa ${index}` });
+                marker.addTo(markerLayer);
+            });
+
+            const distanceInKm = (path.distance / 1000).toFixed(1);
+            const timeInMs = path.time;
+            const hours = Math.floor(timeInMs / (1000 * 60 * 60));
+            const minutes = Math.floor((timeInMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            infoBox.innerHTML = `<strong>Distanza:</strong> ${distanceInKm} km<br><strong>Tempo:</strong> ${hours}h ${minutes}min`;
+
+        } catch (error) {
+            console.error("Errore durante il calcolo del percorso:", error);
+            infoBox.innerHTML = 'Errore nel calcolo.';
+        }
+    }
+</script>
+
+</body>
+</html>

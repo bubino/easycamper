@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     userId: {
       type: DataTypes.UUID,
-      allowNull: false
+      allowNull: true
     },
     operation: {
       type: DataTypes.STRING,

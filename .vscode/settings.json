@@ -1,0 +1,16 @@
+{
+  "jest.jestCommandLine": "cd server && npm test",
+  "jest.rootPath": "server",
+  "jest.autoRun": {
+    "watch": false,
+    "onStartup": []
+  },
+  "jest.testExplorer": {
+    "enabled": true
+  },
+  "jest.showCoverageOnLoad": false,
+  "jest.disabledWorkspaceFolders": [
+    "easycamper"
+  ],
+  "cmake.sourceDirectory": "/Users/francescofarina/easycamper/linux"
+}

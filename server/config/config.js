@@ -21,6 +21,13 @@ module.exports = {
     logging:  false
   },
 
+  // ----------- ambiente di test end-to-end (E2E) --------------------------
+  e2e: {
+    dialect:  'sqlite',
+    storage:  process.env.SQLITE_STORAGE || ':memory:',
+    logging:  false
+  },
+
   // ----------- produzione ------------------------------------------------
   production: {
     username: process.env.POSTGRES_USER,

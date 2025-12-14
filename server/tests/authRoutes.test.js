@@ -9,7 +9,7 @@ jest.mock('../routes/email', () => ({
 
 describe('User registration (test)', () => {
   beforeAll(async () => {
-    await sequelize.sync({ force: true });
+    await sequelize.sync();
   });
 
   it('should register a new user', async () => {
@@ -96,5 +96,31 @@ describe('User registration (test)', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveProperty('message', 'Profile updated');
     expect(res.body).toHaveProperty('name', 'NuovoNome');
+  });
+
+  it('should export all user data (GDPR)', async () => {
+    // Registrazione e verifica
+    await request(app)
+      .post('/auth/register')
+      .send({ username: 'gdpruser', email: 'gdpr@example.com', password: 'gdprpass' });
+    const user = await User.findOne({ where: { email: 'gdpr@example.com' } });
+    const verificationToken = require('jsonwebtoken').sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '1d' });
+    await request(app).get(`/auth/verify-email?token=${verificationToken}`);
+    // Login
+    const loginRes = await request(app)
+      .post('/auth/login')
+      .send({ email: 'gdpr@example.com', password: 'gdprpass' });
+    const token = loginRes.body.token;
+    // Chiamata export-data
+    const exportRes = await request(app)
+      .get('/auth/export-data')
+      .set('Authorization', `Bearer ${token}`);
+    expect(exportRes.statusCode).toBe(200);
+    expect(exportRes.body).toHaveProperty('user');
+    expect(exportRes.body.user.email).toBe('gdpr@example.com');
+    expect(exportRes.body).toHaveProperty('vehicles');
+    expect(exportRes.body).toHaveProperty('spots');
+    expect(exportRes.body).toHaveProperty('favoriteSpots');
+    expect(exportRes.body).toHaveProperty('maintenanceEntries');
   });
 });

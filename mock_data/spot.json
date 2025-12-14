@@ -1,0 +1,62 @@
+[
+  {
+    "id": "spot1",
+    "name": "Area Sosta Milano Nord",
+    "lat": 45.4700,
+    "lng": 9.1800,
+    "type": "area_sosta",
+    "description": "Area sosta attrezzata con servizi, elettricità, acqua, scarico, videosorveglianza. Recensioni positive da camperisti.",
+    "services": [
+      "Elettricità",
+      "Acqua",
+      "Scarico acque grigie",
+      "Scarico WC",
+      "Docce",
+      "WC",
+      "Wi‑Fi",
+      "Animali ammessi"
+    ],
+    "rating": 4.6,
+    "photos": ["https://example.com/photo1.jpg"]
+  },
+  {
+    "id": "spot2",
+    "name": "Campeggio Navigli",
+    "lat": 45.4642,
+    "lng": 9.19,
+    "type": "campeggio",
+    "description": "Campeggio immerso nel verde, accesso facile, piazzole grandi, ristorante, market, animazione bambini.",
+    "services": [
+      "Elettricità",
+      "Acqua",
+      "Docce",
+      "WC",
+      "Wi‑Fi",
+      "Ristorante",
+      "Piscina",
+      "Bar",
+      "Lavanderia",
+      "Area giochi",
+      "Negozi"
+    ],
+    "rating": 4.8,
+    "photos": ["https://example.com/photo2.jpg"]
+  },
+  {
+    "id": "spot3",
+    "name": "Area Sosta Centro Storico",
+    "lat": 45.4650,
+    "lng": 9.1920,
+    "type": "area_sosta",
+    "description": "Area sosta vicina al centro, accesso 24h, bagni puliti, ottima per visitare Milano a piedi.",
+    "services": [
+      "Elettricità",
+      "Acqua",
+      "WC",
+      "Wi‑Fi",
+      "Aperto tutto l'anno"
+    ],
+    "rating": 4.2,
+    "photos": ["https://example.com/photo3.jpg"]
+  }
+]

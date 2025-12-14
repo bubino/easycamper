@@ -1,7 +1,8 @@
 openapi: 3.0.0
 info:
-  title: Easycamper API
-  version: 0.1.0
+  title: EasyCamper API
+  version: 1.0.0
+  description: API backend EasyCamper (routing, utenti, veicoli, spot, ecc.)
 servers:
   - url: http://localhost:5000
     description: Mock server
@@ -10,6 +11,46 @@ paths:
   /vehicles:
     get:
       summary: Lista dei veicoli dell'utente
+      description: Restituisce la lista dei veicoli dell'utente autenticato. Supporta paginazione e filtri.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Numero massimo di risultati (default 20)
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+          description: Offset per la paginazione (default 0)
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [camper, van, autocaravan]
+          description: Filtra per tipo veicolo
+        - in: query
+          name: make
+          schema:
+            type: string
+          description: Filtra per marca
+        - in: query
+          name: model
+          schema:
+            type: string
+          description: Filtra per modello
+        - in: query
+          name: year
+          schema:
+            type: integer
+            minimum: 2010
+            maximum: 2025
+          description: Filtra per anno (solo dal 2010 in poi)
       responses:
         '200':
           description: Array di veicoli
@@ -19,8 +60,15 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Vehicle'
+        '401':
+          description: Autenticazione richiesta
+        '403':
+          description: Accesso non autorizzato
     post:
       summary: Registra un nuovo veicolo
+      description: Registra un nuovo veicolo per l'utente autenticato. Solo tipi camper, van, autocaravan e anno dal 2010 in poi.
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -34,10 +82,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Vehicle'
+        '400':
+          description: Dati non validi (tipo/anno errati)
+        '401':
+          description: Autenticazione richiesta
+        '403':
+          description: Accesso non autorizzato
 
   /vehicles/{vehicleId}:
     get:
       summary: Dettaglio di un veicolo
+      description: Restituisce i dettagli di un veicolo posseduto dall'utente autenticato.
+      security:
+        - bearerAuth: []
       parameters:
         - in: path
           name: vehicleId
@@ -53,7 +110,65 @@ paths:
               schema:
                 $ref: '#/components/schemas/Vehicle'
         '404':
-          description: Veicolo non trovato
+          description: Veicolo non trovato o non di proprietà
+        '401':
+          description: Autenticazione richiesta
+        '403':
+          description: Accesso non autorizzato
+    put:
+      summary: Modifica un veicolo esistente
+      description: Modifica i dati di un veicolo posseduto dall'utente. Solo tipi camper, van, autocaravan e anno dal 2010 in poi.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: vehicleId
+          required: true
+          schema:
+            type: string
+          description: ID del veicolo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewVehicle'
+      responses:
+        '200':
+          description: Veicolo aggiornato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '400':
+          description: Dati non validi (tipo/anno errati)
+        '404':
+          description: Veicolo non trovato o non di proprietà
+        '401':
+          description: Autenticazione richiesta
+        '403':
+          description: Accesso non autorizzato
+    delete:
+      summary: Cancella un veicolo
+      description: Cancella il veicolo e tutte le specifiche tecniche correlate (CamperSpec) in modo atomico. Solo se di proprietà dell'utente.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: vehicleId
+          required: true
+          schema:
+            type: string
+          description: ID del veicolo
+      responses:
+        '204':
+          description: Veicolo e specifiche correlate cancellati
+        '404':
+          description: Veicolo non trovato o non di proprietà
+        '401':
+          description: Autenticazione richiesta
+        '403':
+          description: Accesso non autorizzato
 
   /spots:
     get:
@@ -361,7 +476,185 @@ paths:
               schema:
                 $ref: '#/components/schemas/SOSRequest'
 
+  /public-spots:
+    get:
+      summary: Elenco degli spot pubblici con filtri avanzati
+      parameters:
+        - in: query
+          name: name
+          schema:
+            type: string
+          description: Nome dello spot
+        - in: query
+          name: description
+          schema:
+            type: string
+          description: Descrizione dello spot
+        - in: query
+          name: latitude
+          schema:
+            type: number
+          description: Latitudine per il filtro di distanza
+        - in: query
+          name: longitude
+          schema:
+            type: number
+          description: Longitudine per il filtro di distanza
+        - in: query
+          name: distance
+          schema:
+            type: number
+          description: Distanza massima in km
+        - in: query
+          name: type
+          schema:
+            type: string
+          description: Tipo di spot
+        - in: query
+          name: services
+          schema:
+            type: string
+          description: Servizi richiesti, separati da virgola
+        - in: query
+          name: features
+          schema:
+            type: string
+          description: Caratteristiche richieste, separate da virgola
+        - in: query
+          name: accessible
+          schema:
+            type: boolean
+          description: Accessibile (true/false)
+      responses:
+        '200':
+          description: Lista degli spot pubblici trovati
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Spot'
+
+  /api/vehicle-models:
+    get:
+      summary: Cerca modelli di veicolo preconfigurati
+      description: Restituisce una lista paginata di modelli con dimensioni e peso, utile per precompilare i dati veicolo e il routing camper-aware.
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Testo libero per cercare su brand e model.
+        - in: query
+          name: brand
+          schema:
+            type: string
+          description: Filtra per brand (es. fiat, volkswagen, hymer).
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+          description: Numero massimo di elementi da restituire (max 100).
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+          description: Offset di paginazione.
+      responses:
+        '200':
+          description: Lista paginata di modelli veicolo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VehicleModel'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        '500':
+          description: Errore interno
+
+  /users/{id}/change-email:
+    post:
+      summary: Richiede il cambio email per un utente
+      description: Genera un token di cambio email e invia un link di conferma alla nuova email, con rate limiting e audit log.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: ID numerico dell'utente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - newEmail
+              properties:
+                newEmail:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Richiesta di cambio email accettata.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Input non valido (email mancante/non valida o uguale a quella attuale, ID non numerico).
+        '404':
+          description: Utente non trovato.
+        '429':
+          description: Troppe richieste sul cambio email.
+
+  /users/confirm-email-change:
+    get:
+      summary: Conferma il cambio email con token
+      description: Conferma il cambio email utilizzando un token inviato via email, aggiornando l'indirizzo e loggando l'operazione.
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema:
+            type: string
+          description: Token di cambio email generato dalla precedente richiesta.
+      responses:
+        '200':
+          description: Cambio email confermato.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Token mancante, non valido o scaduto.
+        '429':
+          description: Troppe richieste (rate limit).
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     Vehicle:
       type: object
@@ -374,7 +667,7 @@ components:
           example: "user456"
         type:
           type: string
-          enum: [camper, van, caravan]
+          enum: [camper, van, autocaravan]
         make:
           type: string
           example: "Fiat"
@@ -396,21 +689,25 @@ components:
         imageUrl:
           type: string
           format: uri
+        year:
+          type: integer
+          minimum: 2010
+          maximum: 2025
+          example: 2020
       required:
         - id
         - userId
         - type
         - make
         - model
+        - year
 
     NewVehicle:
       type: object
       properties:
-        userId:
-          type: string
         type:
           type: string
-          enum: [camper, van, caravan]
+          enum: [camper, van, autocaravan]
         make:
           type: string
         model:
@@ -421,11 +718,15 @@ components:
           type: number
         weight:
           type: number
+        year:
+          type: integer
+          minimum: 2010
+          maximum: 2025
       required:
-        - userId
         - type
         - make
         - model
+        - year
 
     Spot:
       type: object
@@ -714,3 +1015,53 @@ components:
         - vehicleId
         - message
         - date
+
+    VehicleModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        brand:
+          type: string
+        model:
+          type: string
+        year_from:
+          type: integer
+          nullable: true
+        length_m:
+          type: number
+          format: float
+          nullable: true
+        height_m:
+          type: number
+          format: float
+          nullable: true
+        weight_kg:
+          type: number
+          format: float
+          nullable: true
+        type:
+          type: string
+          description: Tipo veicolo (van, camper, motorhome, ecc.).
+        brand_slug:
+          type: string
+          description: Slug normalizzato del brand (es. fiat, volkswagen).
+
+    User:
+      type: object
+      description: Rappresentazione sicura dell'utente restituita dalle API (campi sensibili rimossi).
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          description: Ruolo utente (user, admin).
+        emailVerified:
+          type: boolean
+      additionalProperties: false

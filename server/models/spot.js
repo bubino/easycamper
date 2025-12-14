@@ -36,6 +36,48 @@ module.exports = (sequelize, DataTypes) => {
       latitude: DataTypes.FLOAT,
       longitude: DataTypes.FLOAT,
       description: DataTypes.TEXT,
+      shortDescription: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'short_description',
+      },
+      type: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      ratingAverage: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
+        field: 'rating_average',
+      },
+      ratingCount: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'rating_count',
+      },
+      services: {
+        type: DataTypes.JSONB || DataTypes.JSON,
+        allowNull: true,
+      },
+      tags: {
+        type: DataTypes.JSONB || DataTypes.JSON,
+        allowNull: true,
+      },
+      openingHours: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'opening_hours',
+      },
+      priceInfo: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'price_info',
+      },
+      lastUpdate: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'last_update',
+      },
     },
     {
       sequelize,

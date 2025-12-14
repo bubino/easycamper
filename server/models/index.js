@@ -11,12 +11,12 @@ let sequelize;
 /*───────────────────────────────────────────────────────────────
   1. Dialetto
 ───────────────────────────────────────────────────────────────*/
-if (env === 'test') {
-  // SQLite in-memory per gli unit test
+if (env === 'test' || env === 'e2e') {
+  // SQLite in-memory per test unitari, oppure su file per E2E
   sequelize = new Sequelize({
     dialect: 'sqlite',
-    storage : ':memory:',
-    logging : false,
+    storage: process.env.SQLITE_STORAGE || ':memory:',
+    logging: false,
   });
 } else if (process.env.DATABASE_URL) {
   // Produzione / staging

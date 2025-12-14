@@ -1,10 +1,11 @@
 'use strict';
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const dialect = queryInterface.sequelize.getDialect();
     await queryInterface.createTable('MaintenanceEntries', {
       id: {
         type: Sequelize.UUID,
-        defaultValue: Sequelize.literal('uuid_generate_v4()'),
+        defaultValue: dialect === 'postgres' ? Sequelize.literal('uuid_generate_v4()') : Sequelize.UUIDV4,
         allowNull: false,
         primaryKey: true,
       },
@@ -30,12 +31,12 @@ module.exports = {
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('NOW()')
+        defaultValue: dialect === 'postgres' ? Sequelize.literal('NOW()') : Sequelize.NOW
       },
       updatedAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('NOW()')
+        defaultValue: dialect === 'postgres' ? Sequelize.literal('NOW()') : Sequelize.NOW
       }
     });
   },

@@ -2,12 +2,13 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const dialect = queryInterface.sequelize.getDialect();
     await queryInterface.createTable('FavoriteSpots', {
       id: {
         allowNull: false,
         primaryKey: true,
         type: Sequelize.UUID,
-        defaultValue: Sequelize.literal('uuid_generate_v4()')
+        defaultValue: dialect === 'postgres' ? Sequelize.literal('uuid_generate_v4()') : Sequelize.UUIDV4
       },
       userId: {
         type: Sequelize.UUID,
@@ -21,8 +22,8 @@ module.exports = {
         references: { model: 'Spots', key: 'id' },
         onDelete: 'CASCADE'
       },
-      createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn('now') },
-      updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn('now') }
+      createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: dialect === 'postgres' ? Sequelize.fn('now') : Sequelize.NOW },
+      updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: dialect === 'postgres' ? Sequelize.fn('now') : Sequelize.NOW }
     });
     await queryInterface.addIndex('FavoriteSpots', ['userId']);
     await queryInterface.addIndex('FavoriteSpots', ['spotId']);

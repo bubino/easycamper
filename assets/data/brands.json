@@ -1,0 +1,161 @@
+{
+  "Adria": {
+    "domain": "adria-mobil.com",
+    "logoAsset": "adria.png",
+    "iconName": "adria-mobil",
+    "license": "MIT",
+    "models": []
+  },
+  "Benimar": {
+  "domain": "benimar.com",
+  "logoAsset": null,
+  "models": []
+},
+  "Buerstner": {
+    "domain": "buerstner.de",
+    "logoAsset": "buerstner.png",
+    "iconName": "buerstner",
+    "license": "MIT",
+    "models": []
+  },
+  "Carado": {
+    "domain": "carado.de",
+    "logoAsset": "carado.png",
+    "iconName": "carado",
+    "license": "MIT",
+    "models": []
+  },
+  "Carthago": {
+    "domain": "carthago.com",
+    "logoAsset": "carthago.png",
+    "iconName": "carthago",
+    "license": "MIT",
+    "models": []
+  },
+  "Chausson": {
+    "domain": "chausson.com",
+    "logoAsset": "chausson.png",
+    "iconName": "chausson",
+    "license": "MIT",
+    "models": []
+  },
+  "Coachmen": {
+    "domain": "coachmenrv.com",
+    "logoAsset": "coachmen.png",
+    "iconName": "dethleffs",
+    "license": "MIT",
+    "models": []
+  },
+  "Dethleffs": {
+    "domain": "dethleffs.com",
+    "logoAsset": "dethleffs.png",
+    "iconName": "coachmenrv",
+    "license": "MIT",
+    "models": []
+  },
+  "Euramobil": {
+    "domain": "euramobil.com",
+    "logoAsset": "euramobil.png",
+    "iconName": "euramobil",
+    "license": "MIT",
+    "models": []
+  },
+  "Fiat": {
+    "domain": "fiat.com",
+    "logoAsset": "fiat.png",
+    "iconName": "fiat",
+    "license": "MIT",
+    "models": []
+  },
+  "Hobby": {
+    "domain": "hobby-caravan.de",
+    "logoAsset": "hobby.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "Hymer": {
+    "domain": "hymer.com",
+    "logoAsset": "hymer.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "Karmann Mobil": {
+    "domain": "karmann-mobil.de",
+    "logoAsset": "karmann_mobil.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "Knaus": {
+    "domain": "knaus.com",
+    "logoAsset": "knaus.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "Laika": {
+    "domain": "laika.it",
+    "logoAsset": "laika.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "McLouis": {
+    "domain": "mclouis.com",
+    "logoAsset": "mclouis.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "Mobilvetta": {
+    "domain": "mobilvetta.com",
+    "logoAsset": "mobilvetta.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "Morelo": {
+    "domain": "morelo.de",
+    "logoAsset": "morelo.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "Rapido": {
+    "domain": "rapido-vdl.com",
+    "logoAsset": "rapido.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "Rimor": {
+    "domain": "rimor.eu",
+    "logoAsset": "rimor.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "Sunlight": {
+    "domain": "sunlight.de",
+    "logoAsset": "sunlight.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "Weinsberg": {
+    "domain": "weinsberg.com",
+    "logoAsset": "weinsberg.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  },
+  "Westfalia": {
+    "domain": "westfalia.de",
+    "logoAsset": "westfalia.png",
+    "iconName": null,
+    "license": "MIT",
+    "models": []
+  }
+}

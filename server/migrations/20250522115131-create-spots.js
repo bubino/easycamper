@@ -1,10 +1,11 @@
 'use strict';
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const dialect = queryInterface.sequelize.getDialect();
     await queryInterface.createTable('Spots', {
       id: {
         type: Sequelize.UUID,
-        defaultValue: Sequelize.literal('uuid_generate_v4()'),
+        defaultValue: dialect === 'postgres' ? Sequelize.literal('uuid_generate_v4()') : Sequelize.UUIDV4,
         allowNull: false,
         primaryKey: true,
       },
@@ -36,15 +37,15 @@ module.exports = {
         allowNull: true,
       },
       services: {
-        type: Sequelize.ARRAY(Sequelize.STRING),
+        type: dialect === 'postgres' ? Sequelize.ARRAY(Sequelize.STRING) : Sequelize.TEXT,
         allowNull: true,
       },
       features: {
-        type: Sequelize.ARRAY(Sequelize.STRING),
+        type: dialect === 'postgres' ? Sequelize.ARRAY(Sequelize.STRING) : Sequelize.TEXT,
         allowNull: true,
       },
       images: {
-        type: Sequelize.ARRAY(Sequelize.STRING),
+        type: dialect === 'postgres' ? Sequelize.ARRAY(Sequelize.STRING) : Sequelize.TEXT,
         allowNull: true,
       },
       accessible: {
@@ -71,12 +72,12 @@ module.exports = {
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('NOW()')
+        defaultValue: dialect === 'postgres' ? Sequelize.literal('NOW()') : Sequelize.NOW
       },
       updatedAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('NOW()')
+        defaultValue: dialect === 'postgres' ? Sequelize.literal('NOW()') : Sequelize.NOW
       }
     });
   },

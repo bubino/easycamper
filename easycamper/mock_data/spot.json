@@ -1,0 +1,82 @@
+[
+  {
+    "id": "1",
+    "name": "Parcheggio Lampugnano",
+    "description": "Ampio parcheggio scambiatore alle porte di Milano. Comodo per la metro.",
+    "lat": 45.4905,
+    "lng": 9.1275,
+    "type": "area_sosta",
+    "services": ["Elettricità", "Scarico acque nere", "Cestini rifiuti"],
+    "rating": 3.5
+  },
+  {
+    "id": "101",
+    "name": "Area Sosta San Siro",
+    "description": "Parcheggio tranquillo vicino allo stadio, ben collegato.",
+    "lat": 45.4780,
+    "lng": 9.1240,
+    "type": "area_sosta",
+    "services": ["Cestini rifiuti", "Illuminazione"],
+    "rating": 3.0
+  },
+  {
+    "id": "102",
+    "name": "Cascina Gaggioli",
+    "description": "Agriturismo alle porte di Milano sud, vendita prodotti tipici.",
+    "lat": 45.4150,
+    "lng": 9.1900,
+    "type": "agricampeggio",
+    "services": ["Elettricità", "Acqua potabile", "Ristorante"],
+    "rating": 4.5
+  },
+  {
+    "id": "2",
+    "name": "Area Camper Laives",
+    "description": "Area tranquilla immersa nel verde, ottima per visitare Bolzano.",
+    "lat": 46.4285,
+    "lng": 11.3365,
+    "type": "area_sosta",
+    "services": ["Elettricità", "Acqua potabile", "Scarico acque grigie", "Wi-Fi"],
+    "rating": 4.2
+  },
+  {
+    "id": "201",
+    "name": "Parcheggio Vurza",
+    "description": "Piccolo parcheggio per sosta breve vicino a Laives.",
+    "lat": 46.4100,
+    "lng": 11.3200,
+    "type": "area_sosta",
+    "services": [],
+    "rating": 2.8
+  },
+  {
+    "id": "202",
+    "name": "Camping Monticolo",
+    "description": "Campeggio sui laghi di Monticolo, a pochi km da Laives.",
+    "lat": 46.4200,
+    "lng": 11.2800,
+    "type": "campeggio",
+    "services": ["Piscina", "Bar", "Docce", "Elettricità"],
+    "rating": 4.7
+  },
+  {
+    "id": "3",
+    "name": "Camping Village Roma",
+    "description": "Campeggio completo di tutti i servizi vicino alla capitale.",
+    "lat": 41.8850,
+    "lng": 12.4000,
+    "type": "campeggio",
+    "services": ["Piscina", "Ristorante", "Market", "Docce", "Wi-Fi"],
+    "rating": 4.5
+  },
+  {
+    "id": "4",
+    "name": "Agricampeggio Toscano",
+    "description": "Sosta nella natura tra le colline del Chianti.",
+    "lat": 43.5000,
+    "lng": 11.2000,
+    "type": "agricampeggio",
+    "services": ["Prodotti tipici", "Acqua potabile", "Animali ammessi"],
+    "rating": 4.8
+  }
+]

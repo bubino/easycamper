@@ -4,7 +4,7 @@ const router  = express.Router();
 const { Spot, Vehicle } = require('../models');
 const { query, validationResult } = require('express-validator');
 const { Op, Sequelize } = require('sequelize');
-const { getMultiShardRouteTest } = require('../utils/multishardRoute.test');
+// const { getMultiShardRouteTest } = require('../utils/multishardRoute.test'); // COMMENTATO: solo test
 
 router.get(
   '/',
@@ -154,9 +154,10 @@ router.post('/', async (req, res) => {
     const endObj = { lat: endCoords[1], lon: endCoords[0] };
     console.log('Start coordinates:', startObj, 'End coordinates:', endObj);
     // Chiamo la funzione multishard test
-    const routeResult = await getMultiShardRouteTest({ start: startObj, end: endObj, profile, dimensions });
-    console.log('Route result:', routeResult);
-    return res.json({ message: 'Route created successfully', route: routeResult });
+    // const routeResult = await getMultiShardRouteTest({ start: startObj, end: endObj, profile, dimensions }); // COMMENTATO: solo test
+    // console.log('Route result:', routeResult);
+    // return res.json({ message: 'Route created successfully', route: routeResult }); // COMMENTATO: solo test
+    return res.json({ message: 'Route creation not available in this environment' });
   } catch (err) {
     console.error('Errore in POST /api/recommended-spots:', err);
     return res.status(500).json({ error: 'Errore del server' });

@@ -9,7 +9,7 @@ jest.mock('../routes/email', () => ({
 
 describe('User registration, login, and profile (PRODUZIONE)', () => {
   beforeAll(async () => {
-    await sequelize.sync({ force: true });
+    await sequelize.sync();
   });
 
   it('should register a new user (prod)', async () => {

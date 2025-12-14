@@ -5,36 +5,45 @@ module.exports = (sequelize, DataTypes) => {
 
   RefreshToken.init({
     id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+      type: DataTypes.STRING,
       primaryKey: true
     },
     userId: {
-      type: DataTypes.UUID,
-      allowNull: false
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'user_id'
     },
     tokenHash: {
-      type: DataTypes.STRING,
-      allowNull: false
+      type: DataTypes.STRING(512),
+      allowNull: false,
+      field: 'token_hash'
     },
     deviceInfo: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
+      field: 'device_info'
     },
-    createdAt: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW
+    ip: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'ip'
+    },
+    fingerprint: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'fingerprint'
     },
     expiresAt: {
       type: DataTypes.DATE,
-      allowNull: false
+      allowNull: true,
+      field: 'expires_at'
     }
   }, {
     sequelize,
     modelName: 'RefreshToken',
     tableName: 'refresh_tokens',
     underscored: true,
-    timestamps: false
+    timestamps: true
   });
 
   return RefreshToken;

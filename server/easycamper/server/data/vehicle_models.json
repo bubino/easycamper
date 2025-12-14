@@ -1,0 +1,222 @@
+[
+  {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "brand": "Fiat",
+    "model": "Ducato 130 MJT",
+    "year_from": 2015,
+    "length_m": 5.41,
+    "height_m": 2.52,
+    "weight_kg": 3000,
+    "type": "van",
+    "brand_slug": "fiat"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111112",
+    "brand": "Fiat",
+    "model": "Ducato 150 MJT L3H2",
+    "year_from": 2016,
+    "length_m": 5.99,
+    "height_m": 2.75,
+    "weight_kg": 3300,
+    "type": "van",
+    "brand_slug": "fiat"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111113",
+    "brand": "Fiat",
+    "model": "Ducato Maxi L4H2",
+    "year_from": 2018,
+    "length_m": 6.36,
+    "height_m": 2.80,
+    "weight_kg": 3500,
+    "type": "van",
+    "brand_slug": "fiat"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111114",
+    "brand": "Citroën",
+    "model": "Jumper L2H2",
+    "year_from": 2017,
+    "length_m": 5.41,
+    "height_m": 2.52,
+    "weight_kg": 3000,
+    "type": "van",
+    "brand_slug": "citroen"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111115",
+    "brand": "Peugeot",
+    "model": "Boxer L3H2",
+    "year_from": 2017,
+    "length_m": 5.99,
+    "height_m": 2.75,
+    "weight_kg": 3300,
+    "type": "van",
+    "brand_slug": "peugeot"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111116",
+    "brand": "Volkswagen",
+    "model": "California Ocean T6",
+    "year_from": 2016,
+    "length_m": 4.90,
+    "height_m": 1.99,
+    "weight_kg": 3000,
+    "type": "camper",
+    "brand_slug": "volkswagen"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111117",
+    "brand": "Volkswagen",
+    "model": "Grand California 600",
+    "year_from": 2019,
+    "length_m": 5.98,
+    "height_m": 2.97,
+    "weight_kg": 3500,
+    "type": "camper",
+    "brand_slug": "volkswagen"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111118",
+    "brand": "Mercedes-Benz",
+    "model": "Sprinter 319 CDI L3H2",
+    "year_from": 2018,
+    "length_m": 6.96,
+    "height_m": 2.82,
+    "weight_kg": 3500,
+    "type": "van",
+    "brand_slug": "mercedes"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111119",
+    "brand": "Mercedes-Benz",
+    "model": "Marco Polo HORIZON",
+    "year_from": 2017,
+    "length_m": 5.14,
+    "height_m": 1.98,
+    "weight_kg": 3050,
+    "type": "camper",
+    "brand_slug": "mercedes"
+  },
+  {
+    "id": "11111111-1111-1111-1111-11111111111a",
+    "brand": "Ford",
+    "model": "Transit Custom Nugget",
+    "year_from": 2019,
+    "length_m": 4.97,
+    "height_m": 2.06,
+    "weight_kg": 3200,
+    "type": "camper",
+    "brand_slug": "ford"
+  },
+  {
+    "id": "11111111-1111-1111-1111-11111111111b",
+    "brand": "Ford",
+    "model": "Transit Van L3H2",
+    "year_from": 2018,
+    "length_m": 5.98,
+    "height_m": 2.78,
+    "weight_kg": 3300,
+    "type": "van",
+    "brand_slug": "ford"
+  },
+  {
+    "id": "11111111-1111-1111-1111-11111111111c",
+    "brand": "Hymer",
+    "model": "B-Class ModernComfort I 580",
+    "year_from": 2019,
+    "length_m": 7.19,
+    "height_m": 2.96,
+    "weight_kg": 3500,
+    "type": "motorhome",
+    "brand_slug": "hymer"
+  },
+  {
+    "id": "11111111-1111-1111-1111-11111111111d",
+    "brand": "Hymer",
+    "model": "ML-T 580",
+    "year_from": 2018,
+    "length_m": 6.98,
+    "height_m": 2.90,
+    "weight_kg": 3500,
+    "type": "motorhome",
+    "brand_slug": "hymer"
+  },
+  {
+    "id": "11111111-1111-1111-1111-11111111111e",
+    "brand": "Laika",
+    "model": "Kreos 5009",
+    "year_from": 2017,
+    "length_m": 7.49,
+    "height_m": 2.90,
+    "weight_kg": 3500,
+    "type": "motorhome",
+    "brand_slug": "laika"
+  },
+  {
+    "id": "11111111-1111-1111-1111-11111111111f",
+    "brand": "Laika",
+    "model": "Ecovip 609",
+    "year_from": 2016,
+    "length_m": 6.99,
+    "height_m": 2.90,
+    "weight_kg": 3500,
+    "type": "motorhome",
+    "brand_slug": "laika"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111120",
+    "brand": "Adria",
+    "model": "Twin 600 SP",
+    "year_from": 2018,
+    "length_m": 5.99,
+    "height_m": 2.58,
+    "weight_kg": 3300,
+    "type": "van",
+    "brand_slug": "adria"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111121",
+    "brand": "Adria",
+    "model": "Coral Plus 670 SL",
+    "year_from": 2019,
+    "length_m": 7.48,
+    "height_m": 2.82,
+    "weight_kg": 3500,
+    "type": "motorhome",
+    "brand_slug": "adria"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111122",
+    "brand": "Roller Team",
+    "model": "Zefiro 295",
+    "year_from": 2017,
+    "length_m": 6.99,
+    "height_m": 3.20,
+    "weight_kg": 3500,
+    "type": "motorhome",
+    "brand_slug": "roller-team"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111123",
+    "brand": "Chausson",
+    "model": "Welcome 628",
+    "year_from": 2017,
+    "length_m": 7.19,
+    "height_m": 2.92,
+    "weight_kg": 3500,
+    "type": "motorhome",
+    "brand_slug": "chausson"
+  },
+  {
+    "id": "11111111-1111-1111-1111-111111111124",
+    "brand": "Knaus",
+    "model": "BoxStar 600",
+    "year_from": 2018,
+    "length_m": 5.99,
+    "height_m": 2.58,
+    "weight_kg": 3300,
+    "type": "van",
+    "brand_slug": "knaus"
+  }
+]

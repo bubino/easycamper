@@ -1,0 +1,62 @@
+name: easycamper
+description: "EasyCamper – travel companion per camperisti"
+publish_to: none
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.7.2 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Firebase
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
+  google_sign_in: ^6.2.1
+  cloud_firestore: ^6.1.0
+  firebase_storage: ^13.0.4
+  firebase_messaging: ^16.0.4
+
+  # Mappe
+  flutter_map: ^8.1.1
+  latlong2: ^0.9.1
+  mapbox_gl: ^0.16.0
+  http: ^1.6.0
+
+  # Immagini
+  image_picker: ^1.1.2
+
+  # Routing & stato
+  flutter_riverpod: ^3.0.3
+  go_router: ^17.0.0
+  provider: ^6.1.2
+
+  # Geometria
+  vector_math: ^2.1.4
+
+  # Cache immagini & icone
+  cached_network_image: ^3.3.1
+  simple_icons: ^14.6.1
+
+  # Preferenze locali
+  shared_preferences: ^2.2.3
+  flutter_secure_storage: ^9.2.4
+  flutter_dotenv: ^6.0.0
+  geolocator: ^14.0.2
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - mock_data/spot.json
+    - assets/data/brands.json
+    - assets/logos/
+    - assets/logos/brands/

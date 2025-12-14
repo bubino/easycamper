@@ -29,12 +29,24 @@ module.exports = (sequelize, DataTypes) => {
     height: { type: DataTypes.FLOAT, allowNull: false },
     width:  { type: DataTypes.FLOAT, allowNull: false },
     length: { type: DataTypes.FLOAT, allowNull: false },
-    weight: { type: DataTypes.FLOAT, allowNull: false }
+    weight: { type: DataTypes.FLOAT, allowNull: false },
+    id: {
+      type: DataTypes.VIRTUAL,
+      get() { return this.vehicleId; }
+    }
   }, {
     sequelize,
     modelName: 'CamperSpec',
     tableName: 'CamperSpecs',
     timestamps: false
+  });
+
+  // Hook to support destroy({ where: { id } }) by mapping id to vehicleId
+  CamperSpec.addHook('beforeBulkDestroy', options => {
+    if (options.where && options.where.id) {
+      options.where.vehicleId = options.where.id;
+      delete options.where.id;
+    }
   });
 
   return CamperSpec;

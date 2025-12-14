@@ -4,7 +4,7 @@ const app = require('../app');
 
 describe('Limite massimo 2 device attivi per utente', () => {
   beforeAll(async () => {
-    await sequelize.sync({ force: true });
+    await sequelize.sync();
   });
 
   it('should keep only the last 2 devices active for a user', async () => {

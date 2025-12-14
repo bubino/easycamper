@@ -19,6 +19,11 @@ module.exports = (sequelize, DataTypes) => {
         as: 'spec',
         onDelete: 'CASCADE',
       });
+      // Associazione opzionale al modello di veicolo preconfigurato (solo lato ORM)
+      Vehicle.belongsTo(models.VehicleModel, {
+        foreignKey: 'vehicleModelId',
+        as: 'vehicleModel',
+      });
     }
   }
 
@@ -39,6 +44,13 @@ module.exports = (sequelize, DataTypes) => {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
       },
+      // FK logica verso VehicleModels: stesso tipo UUID dell'id di VehicleModel,
+      // ma senza definire una foreign key DB esplicita tramite sync automatico.
+      vehicleModelId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
+      type: DataTypes.STRING,
       make:   DataTypes.STRING,
       model:  DataTypes.STRING,
       year:   DataTypes.INTEGER,

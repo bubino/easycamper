@@ -1,0 +1,165 @@
+services:
+  db:
+    image: postgres:13
+    container_name: gh_db
+    restart: always
+    environment:
+      POSTGRES_DB: easycamper_dev
+      POSTGRES_USER: easycamper
+      POSTGRES_PASSWORD: secret123
+    ports:
+      - "5432:5432"
+    volumes:
+      - gh_data:/var/lib/postgresql/data
+    networks:
+      - easycamper-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U easycamper -d easycamper_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gh_europa_centro:
+    build: .
+    container_name: gh_europa_centro
+    command: ["java", "-Xmx11g", "-Xms4g", "-jar", "graphhopper.jar", "server", "/data/config.yml"]
+    ports:
+      - "8990:8989"
+    volumes:
+      - ./shards/europa-centro:/data:rw
+      - ./graphhopper/custom_models:/graphhopper/custom_models
+    networks:
+      - easycamper-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  gh_europa_nord:
+    build: .
+    container_name: gh_europa_nord
+    command: ["java", "-Xmx12g", "-Xms4g", "-jar", "graphhopper.jar", "server", "/data/config.yml"]
+    ports:
+      - "8992:8989"
+    volumes:
+      - ./shards/europa-nord:/data:rw
+      - ./graphhopper/custom_models:/graphhopper/custom_models
+    networks:
+      - easycamper-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  gh_europa_ovest:
+    build: .
+    container_name: gh_europa_ovest
+    command: ["java", "-Xmx12g", "-Xms4g", "-jar", "graphhopper.jar", "server", "/data/config.yml"]
+    ports:
+      - "8993:8989"
+    volumes:
+      - ./shards/europa-ovest:/data:rw
+      - ./graphhopper/custom_models:/graphhopper/custom_models
+    networks:
+      - easycamper-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  gh_europa_sud:
+    build: .
+    container_name: gh_europa_sud
+    command: ["java", "-Xmx12g", "-Xms4g", "-jar", "graphhopper.jar", "server", "/data/config.yml"]
+    ports:
+      - "8994:8989"
+    volumes:
+      - ./shards/europa-sud:/data:rw
+      - ./graphhopper/custom_models:/graphhopper/custom_models
+    networks:
+      - easycamper-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  gh_europa_sud_est:
+    build: .
+    container_name: gh_europa_sud_est
+    command: ["java", "-Xmx12g", "-Xms4g", "-jar", "graphhopper.jar", "server", "/data/config.yml"]
+    ports:
+      - "8991:8989"
+    volumes:
+      - ./shards/europa-sud-est:/data:rw
+      - ./graphhopper/custom_models:/graphhopper/custom_models
+    networks:
+      - easycamper-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  server:
+    build: ./server
+    container_name: server
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./server:/usr/src/app
+      - ./api/easycamper:/api/easycamper
+    environment:
+      - POSTGRES_HOST=db
+    networks:
+      - easycamper-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  orchestrator:
+    build: ./orchestrator
+    container_name: orchestrator
+    ports:
+      - "8080:8080"
+    networks:
+      - easycamper-net
+    depends_on:
+      - nginx
+      - server
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/graphhopper.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - easycamper-net
+    depends_on:
+      gh_europa_centro:
+        condition: service_healthy
+      gh_europa_nord:
+        condition: service_healthy
+      gh_europa_ovest:
+        condition: service_healthy
+      gh_europa_sud:
+        condition: service_healthy
+      gh_europa_sud_est:
+        condition: service_healthy
+
+networks:
+  easycamper-net:
+    driver: bridge
+
+volumes:
+  gh_data:

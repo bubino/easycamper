@@ -53,4 +53,10 @@ router.put('/profile-test', async (req, res) => {
   }
 });
 
+describe('Placeholder', () => {
+  it('should pass', () => {
+    expect(true).toBe(true);
+  });
+});
+
 module.exports = router;

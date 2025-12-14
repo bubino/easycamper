@@ -10,8 +10,8 @@ let spotId;
 let entryId;
 
 beforeAll(async () => {
-  // 1) ricrea schema pulito
-  await sequelize.sync({ force: true });
+  // 1) ricrea schema senza forzare la cancellazione
+  await sequelize.sync();
 
   // 2) registra utente
   await request(app)
@@ -30,11 +30,18 @@ beforeAll(async () => {
     .post('/auth/login')
     .send({ email: 'test@example.com', password: 'password' });
 
+  if (!res.body || !res.body.token) {
+    throw new Error('Login fallita nei test: token JWT non ricevuto. Risposta: ' + JSON.stringify(res.body));
+  }
   token = res.body.token;
 });
 
 afterAll(async () => {
   await sequelize.close();
+});
+
+beforeEach(() => {
+  jest.resetAllMocks();
 });
 
 describe('Vehicles API', () => {
@@ -70,6 +77,28 @@ describe('Vehicles API', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].id).toBe(vehicleId);
+  });
+
+  it('PUT /vehicles/:id -> 200', async () => {
+    const res = await request(app)
+      .put(`/vehicles/${vehicleId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ make: 'Fiat', model: 'Ducato Maxi', type: 'camper' });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.model).toBe('Ducato Maxi');
+  });
+
+  it('DELETE /vehicles/:id -> 204', async () => {
+    const res = await request(app)
+      .delete(`/vehicles/${vehicleId}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.statusCode).toBe(204);
+
+    // Conferma cancellazione
+    const check = await request(app)
+      .get('/vehicles')
+      .set('Authorization', `Bearer ${token}`);
+    expect(check.body).toEqual([]);
   });
 });
 
@@ -140,7 +169,7 @@ describe('Spots API', () => {
 describe('MaintenanceEntry API', () => {
   beforeAll(async () => {
     // assicuriamoci di avere un veicolo
-    await request(app)
+    const res = await request(app)
       .post('/vehicles')
       .set('Authorization', `Bearer ${token}`)
       .send({
@@ -148,6 +177,7 @@ describe('MaintenanceEntry API', () => {
         make:  'Ford',
         model: 'Transit'
       });
+    vehicleId = res.body.id;
   });
 
   it('GET /maintenance -> []', async () => {

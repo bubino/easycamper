@@ -1,0 +1,33 @@
+graphhopper:
+  # File OSM da importare per questo shard
+  datareader.file: /data/europa-nord.osm.pbf
+  # Directory di destinazione dei dati del grafo
+  graph.location: /data/graph-cache
+  graph.dataaccess: MMAP
+  # Profili di routing (necessario almeno uno)
+  profiles:
+    - name: car
+      vehicle: car
+      weighting: custom
+      custom_model:
+        speed:
+          - if: road_access == DESTINATION
+            multiply_by: 0.1
+        priority:
+          - if: road_access == DESTINATION
+            multiply_by: 0.1
+  # Parametri di importazione OSM
+  import.osm.ignored_highways: footway, steps, path, pedestrian, cycleway, track
+  # Modelli personalizzati
+  custom_models:
+    enabled: true
+    directory: /graphhopper/custom_models
+
+# Configurazione del server HTTP
+server:
+  application_connectors:
+    - type: http
+      port: 8989
+  admin_connectors:
+    - type: http
+      port: 8990

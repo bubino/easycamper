@@ -1,133 +1,70 @@
-# EasyCamper – Roadmap & Checklist (2025-Q3/Q4)
+# Roadmap EasyCamper
 
-## 0. Vision
-«Un’unica app per camperisti con routing “camper-aware”, community spot, prezzi carburante in tempo reale e navigazione integrata in-car».
+- [x] Nuova app Flutter (progetto root) con schermata Mappa
+  - [x] Integrazione Mapbox su iOS (mappa reale, build in Release, permessi Info.plist sistemati)
+  - [x] Gestione filtri mappa (tipologia parcheggi, servizi, rating minimo, raggio, tipologia) con pannello apri/chiudi
+  - [x] Caricamento POI da backend tramite `/api/spots` con fallback a `mock_data/spot.json`
+  - [x] Mock su macOS: placeholder/preview mappa al posto della mappa + caricamento POI da `mock_data/spot.json`
+  - [x] Lista / card POI su desktop (macOS) con tap → dettaglio
+  - [x] Funzione dettaglio POI riusabile (da lista/card e da marker)
+  - [x] Collegamento tap marker Mapbox → apertura dettaglio POI (card bassa + bottom sheet)
+  - [x] Nuova UI filtri come card centrata sopra la mappa (responsive desktop/mobile)
+  - [x] Badge sull’icona filtri quando ci sono filtri attivi
+  - [ ] Verifica licenze Mapbox: usare solo mappe base/tiles e SDK client, nessun servizio aggiuntivo a pagamento (geocoding, routing, search, ecc.). Servizi avanzati saranno implementati con la nostra logica/backend o altri provider free.
 
----
+- [ ] Mappa: completare filtri e card spot
+  - [ ] Estendere `mock_data/spot.json` con `services` e `rating` coerenti con il pannello filtri
+  - [ ] Applicare filtri `services` e `rating` anche sui mock (desktop e fallback mobile)
+  - [ ] Arricchire la card bassa spot con tipo area, rating (stelline) e 2–3 icone servizi principali
 
-## 1 Infra & Storage ‑ PRIORITÀ ALTA (Sprint 1)
-- [ ] VPS IONOS unico nodo (8 GB RAM)  
-- [ ] **MinIO** Docker  
-  ```bash
-  docker run -d --name minio \
-    -e MINIO_ROOT_USER=easyadmin \
-    -e MINIO_ROOT_PASSWORD=******** \
-    -v /opt/minio/data:/data \
-    -p 9000:9000 -p 9090:9090 \
-    quay.io/minio/minio server /data --console-address ":9090"
-  ```
-- [ ] Bucket `easycamper-media` + policy read-only public
-- [ ] Express → `services/fileStorage.js` (minio-sdk)  
-  – `uploadPresigned()` – `getSignedUrl()` – `deleteObject()`
-- [ ] ENV ➜ `MINIO_ENDPOINT`, `MINIO_KEY`, `MINIO_SECRET`, `MINIO_BUCKET`
+- [ ] Schermata Profilo utente
+  - [x] Mostrare email utente letta da `AuthState` (session.email) in `ProfileScreen`
+  - [x] Passare l'email corrente come `initialEmail` a `PersonalDataScreen` per precompilare i dati
+  - [x] Mostrare anche il nome/username (`session.username`) al posto dell'UUID quando disponibile
+  - [ ] Consentire all'utente di impostare/modificare il proprio nickname/username dal profilo/dati personali (endpoint backend + UI)
+  - [ ] Creare `ProfileScreen` (tab Profilo) con layout base dark in linea con login/mappa
+  - [ ] Aggiungere pulsante Logout in fondo (spostato qui dalla mappa)
 
----
+- [x] Gestione veicoli e libreria modelli
+  - [x] Backend: modello `VehicleModel` e tabella `VehicleModels`
+    - [x] Definita tabella `VehicleModels` (brand, model, year_from, length_m, height_m, weight_kg, type, brand_slug)
+    - [x] Model Sequelize `VehicleModel` registrato in `server/models`
+    - [x] Seed iniziale da `server/easycamper/server/data/vehicle_models.json` tramite `server/sync.js` (upsert idempotente)
+    - [x] API `GET /api/vehicle-models?search=&brand=&limit=&offset=` con paginazione e test Jest/Supertest
+  - [x] Backend: integrazione `Vehicles` ↔ `VehicleModels`
+    - [x] Aggiunto campo opzionale `vehicleModelId` al model `Vehicle` e associazione `belongsTo(VehicleModel)`
+    - [x] Estese le route `/vehicles` (POST/PUT) per accettare `vehicleModelId` e, se `length/height/weight` mancano, ereditare i valori dal `VehicleModel` associato
+    - [x] Test Jest/Supertest per integrazione `/vehicles` ↔ `VehicleModels` (`server/__tests__/vehicles.vehicleModel.test.js`)
+  - [x] App Flutter: integrazione libreria modelli nel form veicolo
+    - [x] Creato client `lib/api/vehicle_models_api.dart` con DTO `VehicleModelDto` per `/api/vehicle-models`
+    - [x] Aggiunta schermata `VehicleModelSearchScreen` per cercare modelli (marca/modello) e selezionarne uno
+    - [x] Integrata `VehicleModelSearchScreen` in `vehicle_form_screen.dart` con pulsante "Cerca modello dal catalogo" che precompila marca/modello/dimensioni/peso in base al modello scelto
 
-## 2 GraphHopper Import & Sharding – ALTA (Sprint 1-2)
-| Shard | BBox | Porta |
-|-------|------|-------|
-| Nord  | 60 N-44 N | 8989 |
-| Centro| 44 N-40 N | 8990 |
-| Sud   | 40 N-30 N | 8991 |
+- [x] Scheda POI (dettaglio spot)
+  - [x] Visualizzare scheda dettaglio spot con titolo, descrizione, servizi (Amenities) e sezione Reviews
+  - [x] Aggiungere schermata `SpotReviewsScreen` con elenco mock di recensioni accessibile da "Vedi tutte le recensioni"
+  - [ ] Collegare il rating medio e il conteggio recensioni a dati reali da backend (`/spots/:id` + `/spots/:id/reviews`), sostituendo valori mock (`124 reviews`, percentuali 5★/4★/3★)
 
-Script `scripts/build_shards.sh`  
-1. `osmium extract europe-latest.osm.pbf -p nord.poly -o nord.osm.pbf`  
-2. `graphhopper.sh import nord.yml` (`-Xmx6g`)  
-3. Tar cache → `/opt/graph-cache/nord`
+- [ ] Gestione foto spot / POI
+  - [ ] Decidere soluzione storage per le foto (es. S3 compatibile, MinIO, Firebase Storage) e configurare bucket/spazio dedicato
+  - [ ] Definire API upload immagini (diretto app → server → storage oppure pre-signed URL) e modello dati foto spot (`/spots/:id/photos`)
+  - [ ] Collegare `AddSpotScreen` all'upload reale delle foto selezionate (invece del mock attuale), con anteprime e gestione errori
 
-NGINX upstream intelligent dispatch (lat/lon in query).
+- [ ] Schermata inserimento spot (AddSpotScreen)
+  - [x] Creare schermata `AddSpotScreen` con layout ispirato al mock Figma: titolo, hero mappa/posizione (placeholder), descrizione, sezione amenities a card e sezione photos
+  - [x] Collegare il pulsante "Aggiungi spot" sulla mappa all'apertura di `AddSpotScreen`
+  - [x] Gestire selezione servizi con lista completa in bottom sheet + pilloline di riepilogo sulla schermata principale
+  - [x] Gestire selezione posizione in modalità mock: "Usa mia posizione (mock)" + "Scegli sulla mappa (mock)" con coordinate predefinite
+  - [ ] Integrare anteprima mappa/posizione reale: usare posizione corrente (GPS) o tap sulla mappa per settare lat/lng dello spot
+  - [ ] Definire payload `POST /spots` (inclusi lat/lng, tipo, servizi, foto) e relativa route backend
+  - [ ] Collegare `AddSpotScreen` al backend (`POST /spots`) e ricaricare i POI sulla mappa dopo inserimento riuscito
 
----
-
-## 3 Routing Camper-Aware – ALTA (Sprint 2)
-- [ ] `camper_eco`, `camper_scenic`, `camper_fast` in `custom_model.json`
-  - usa `priority`, `speed`, `areas`
-  - **niente** restrictions obsolete
-- [ ] `/api/route` payload
-  ```json
-  { "points":[[lat,lon],…],
-    "profile":"camper_eco",
-    "dimensions":{ "height":3.1,"width":2.4,"length":7.4,"weight":3.5 }
-  }
-  ```
-- [ ] Middleware Express che mappa -> shard + profilo
-- [ ] Benchmark < 600 ms median VPS
-
----
-
-## 4 Mobile Map & In-Car – MEDIA (Sprint 3)
-- [ ] Flutter Mapbox layer spot (user + third-party)  
-- [ ] Bottom-sheet “Naviga qui” → /api/route  
-- [ ] Mapbox Navigation SDK – CarPlay / Android Auto module  
-- [ ] Offline cache tile (MapboxOfflineRegion) + Hive for spots
-
----
-
-## 5 Camper DB & Vehicle Models – MEDIA (Sprint 3)
-- Tabella `VehicleModels`
-- Service `vehicleSpecFetch.js` → CarQuery/NHTSA → cache
-- Autocomplete `/vehicle-models`
-- Batch seed 2010-oggi
-
----
-
-## 6 Fuel Stations & Pricing – MEDIA (Sprint 4)
-- Service `fuelService.js` fetch Openfuel.io → cron 6 h
-- Layer Mapbox + popup prezzi
-- Cloud Functions → FCM push «Diesel < 1.78€ a 5 km»
-
----
-
-## 7 Observability – MEDIA (Sprint 4)
-- Pino → **Loki** (Grafana Cloud free tier)  
-- Metrics `/metrics` → **Prometheus** + Alertmanager  
-- Tracing OTel → **Grafana Tempo** (Docker)  
-- Sentry free plan (mobile + backend)
-
----
-
-## 8 CI/CD & Backup – BASSA (Sprint 5)
-- GitHub Actions  
-  1. lint/test  
-  2. docker build/push `ghcr.io/bubino/easycamper-api`  
-  3. SSH ➜ `docker pull && docker compose up -d`
-- Fastlane nightly beta TestFlight / Play Internal
-- `cron.daily`  
-  ```bash
-  pg_dump easycamper | gzip > /opt/backup/pg_$(date +%F).sql.gz
-  rclone copy /opt/backup minio:easycamper-backup
-  ```
----
-
-## 9 UX Premium – BASSA (Sprint 6)
-- Live Activities / Widgets (ETA + prezzo carburante)
-- Wizard “Aggiungi spot” (3 step, validazione inline)
-- AI tagging foto (TFLite on-device, offline)
-
----
-
-## Checklist Sicurezza
-- [ ] helmet ✔️
-- [ ] cors whitelist ✔️
-- [ ] express-rate-limit ✔️
-- [ ] xss-clean + hpp ✔️
-- [ ] JWT 15 min + refresh 30 gg
-- [ ] Secrets in `/opt/easycamper/.secrets` (no git)
-
----
-
-## Milestones (Gantt semplificato)
-```
-Wk1  Wk2  Wk3  Wk4  Wk5  Wk6  Wk7  Wk8  Wk9
-[Infra/MinIO]■■■■
-[Shard GH ]     ■■■■
-[Routing   ]         ■■■
-[Map UI    ]            ■■■
-[Camper DB ]               ■■
-[Fuel Price]                 ■■
-[Observab. ]                    ■■
-[CI/CD     ]                       ■■
-[UX Prem.]                           ■■
-```
-
-> **Target beta pubblica**: fine settimana 9.
+- [ ] Integrazione con API esterne per meteo e traffico
+- [ ] Implementazione sistema di notifiche push
+- [ ] Ottimizzazione performance e riduzione consumo batteria
+- [ ] Test e debug su dispositivi Android
+- [ ] Pubblicazione su App Store e Google Play
+- [ ] Allineare UI auth Flutter al design Figma/Stitch
+  - [ ] Schermata `EC_login` (LoginScreen): layout, sfondi, immagine hero, bottoni social
+  - [ ] Schermata `EC_registrazione_nuovo_utente` (RegisterScreen): ordine campi, bottoni social, stile card
+  - [ ] Flusso reset password (`EC_password_reset`, `EC_mail_sent_password`): testi e layout
