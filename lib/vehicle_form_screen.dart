@@ -21,6 +21,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
   final _lengthCtrl = TextEditingController();
   final _heightCtrl = TextEditingController();
   final _weightCtrl = TextEditingController();
+  final _widthCtrl = TextEditingController(); // nuova larghezza in metri
 
   final _modelsApi = VehicleModelsApi();
 
@@ -34,6 +35,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
     _lengthCtrl.text = v?.lengthMeters.toString() ?? '';
     _heightCtrl.text = v?.heightMeters.toString() ?? '';
     _weightCtrl.text = v?.weightKg.toString() ?? '';
+    _widthCtrl.text = v?.widthMeters?.toString() ?? ''; // se esiste nel model
   }
 
   @override
@@ -44,6 +46,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
     _lengthCtrl.dispose();
     _heightCtrl.dispose();
     _weightCtrl.dispose();
+    _widthCtrl.dispose();
     super.dispose();
   }
 
@@ -95,6 +98,11 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
                 _field(
+                  _widthCtrl,
+                  'Larghezza (m)',
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+                _field(
                   _weightCtrl,
                   'Peso (kg)',
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -143,6 +151,9 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
       }
       if (selected.weightKg != null) {
         _weightCtrl.text = selected.weightKg!.toStringAsFixed(0);
+      }
+      if (selected.widthM != null) {
+        _widthCtrl.text = selected.widthM!.toStringAsFixed(2);
       }
     });
   }
@@ -200,6 +211,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
       lengthMeters: double.tryParse(_lengthCtrl.text.trim()) ?? 0,
       heightMeters: double.tryParse(_heightCtrl.text.trim()) ?? 0,
       weightKg: double.tryParse(_weightCtrl.text.trim()) ?? 0,
+      widthMeters: double.tryParse(_widthCtrl.text.trim()), // nuova proprietà
     );
 
     try {
