@@ -57,8 +57,11 @@ class EasyCamperMapState extends State<EasyCamperMap> {
 
   String? _lastRenderedSignature;
 
-  // Removed temporary zoom gating; clustering will be implemented properly next.
-  // static const double _minZoomToShowPois = 9.5;
+  // Only show/fetch POIs when user is sufficiently zoomed in.
+  // Prevents loading hundreds/thousands of items at startup.
+  static const double _minZoomToFetchPois = 9.5;
+
+  bool _refreshInFlight = false;
 
   Future<Uint8List?> _loadMarkerBytes(String assetPath) async {
     if (_markerBytesByAsset.containsKey(assetPath)) {
@@ -148,9 +151,32 @@ class EasyCamperMapState extends State<EasyCamperMap> {
     final map = _mapboxMap;
     if (map == null) return;
 
+    // Prevent overlapping refreshes (e.g. many idle events in a short time).
+    if (_refreshInFlight) return;
+    _refreshInFlight = true;
+
+    final token = _refreshToken;
+
     _setLoading(true);
     try {
       final state = await map.getCameraState();
+
+      final zoom = state.zoom;
+      if (zoom < _minZoomToFetchPois) {
+        // Too zoomed out: clear markers to avoid clutter/lag.
+        if (!mounted) return;
+        if (token != _refreshToken) return;
+
+        if (_spots.isNotEmpty) {
+          setState(() {
+            _spots = [];
+          });
+          await _renderSpotsOnMap();
+          _lastRenderedSignature = '';
+          widget.onSpotsChanged(const []);
+        }
+        return;
+      }
 
       // bbox reale della viewport (normalizzato)
       final bounds =
@@ -189,7 +215,6 @@ class EasyCamperMapState extends State<EasyCamperMap> {
           minRating: filters.minRating,
         );
       } catch (e) {
-        // Debug: if backend query fails we fallback to mock
         // ignore: avoid_print
         print('SPOTS DEBUG: backend fetch failed: $e');
         spots = await _loadMockSpotsFromBundle(filters);
@@ -200,6 +225,7 @@ class EasyCamperMapState extends State<EasyCamperMap> {
           'SPOTS DEBUG: bbox=[$latMin,$lngMin,$latMax,$lngMax] -> ${spots.length} spots');
 
       if (!mounted) return;
+      if (token != _refreshToken) return;
 
       final sig = _spotsSignature(spots);
       if (_lastRenderedSignature == sig) {
@@ -216,6 +242,7 @@ class EasyCamperMapState extends State<EasyCamperMap> {
       widget.onSpotsChanged(spots);
     } finally {
       _setLoading(false);
+      _refreshInFlight = false;
     }
   }
 

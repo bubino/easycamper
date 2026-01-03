@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -132,10 +133,12 @@ class _ProfileHeader extends StatefulWidget {
 
 class _ProfileHeaderState extends State<_ProfileHeader> {
   static const _prefsKey = 'profile_avatar_path_v1';
-  static const _prefsKeyMatrix = 'profile_avatar_matrix_v1';
+
+  // Final approach: store a generated cropped avatar image path.
+  static const _prefsKeyCropped = 'profile_avatar_cropped_path_v3';
 
   String? _avatarPath;
-  Matrix4? _avatarMatrix;
+  String? _croppedAvatarPath;
   bool _loading = true;
 
   @override
@@ -147,20 +150,13 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final path = prefs.getString(_prefsKey);
-    final matrixRaw = prefs.getString(_prefsKeyMatrix);
-
-    Matrix4? matrix;
-    if (matrixRaw != null && matrixRaw.trim().isNotEmpty) {
-      final parts = matrixRaw.split(',').map((e) => double.tryParse(e) ?? 0).toList();
-      if (parts.length == 16) {
-        matrix = Matrix4.fromList(parts);
-      }
-    }
+    final cropped = prefs.getString(_prefsKeyCropped);
 
     if (!mounted) return;
     setState(() {
       _avatarPath = (path != null && path.trim().isNotEmpty) ? path.trim() : null;
-      _avatarMatrix = matrix;
+      _croppedAvatarPath =
+          (cropped != null && cropped.trim().isNotEmpty) ? cropped.trim() : null;
       _loading = false;
     });
   }
@@ -168,30 +164,30 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
     try {
-      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      final picked =
+          await picker.pickImage(source: ImageSource.gallery, imageQuality: 95);
       if (picked == null) return;
 
-      final matrix = await Navigator.of(context).push<Matrix4>(
+      final result = await Navigator.of(context).push<_AvatarCropResult>(
         MaterialPageRoute(
           builder: (_) => _AvatarCropperScreen(imagePath: picked.path),
         ),
       );
+      if (result == null) return;
+
+      final croppedPath = await _generateAndPersistCroppedAvatar(
+        originalPath: picked.path,
+        cropRectInImagePx: result.cropRectInImagePx,
+      );
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefsKey, picked.path);
-      if (matrix != null) {
-        await prefs.setString(
-          _prefsKeyMatrix,
-          matrix.storage.map((e) => e.toString()).join(','),
-        );
-      } else {
-        await prefs.remove(_prefsKeyMatrix);
-      }
+      await prefs.setString(_prefsKeyCropped, croppedPath);
 
       if (!mounted) return;
       setState(() {
         _avatarPath = picked.path;
-        _avatarMatrix = matrix;
+        _croppedAvatarPath = croppedPath;
       });
     } catch (e) {
       if (!mounted) return;
@@ -201,13 +197,53 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
     }
   }
 
+  Future<String> _generateAndPersistCroppedAvatar({
+    required String originalPath,
+    required Rect cropRectInImagePx,
+  }) async {
+    // Decode original image
+    final bytes = await File(originalPath).readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final src = frame.image;
+
+    // Clamp crop rect
+    final safe = Rect.fromLTWH(
+      cropRectInImagePx.left.clamp(0.0, src.width.toDouble()),
+      cropRectInImagePx.top.clamp(0.0, src.height.toDouble()),
+      cropRectInImagePx.width
+          .clamp(1.0, src.width.toDouble() - cropRectInImagePx.left),
+      cropRectInImagePx.height
+          .clamp(1.0, src.height.toDouble() - cropRectInImagePx.top),
+    );
+
+    // Render to square 512x512
+    const outSize = 512;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    final paint = Paint()..isAntiAlias = true;
+    final dst = Rect.fromLTWH(0, 0, outSize.toDouble(), outSize.toDouble());
+    canvas.drawImageRect(src, safe, dst, paint);
+
+    final picture = recorder.endRecording();
+    final outImage = await picture.toImage(outSize, outSize);
+    final pngData = await outImage.toByteData(format: ui.ImageByteFormat.png);
+    final outBytes = pngData!.buffer.asUint8List();
+
+    // Store in app documents directory
+    final dir = await Directory.systemTemp.createTemp('easycamper_avatar_');
+    final outFile = File('${dir.path}/avatar_512.png');
+    await outFile.writeAsBytes(outBytes, flush: true);
+    return outFile.path;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final avatarProvider = (_avatarPath != null)
-        ? FileImage(File(_avatarPath!)) as ImageProvider
-        : null;
-
-    final matrix = _avatarMatrix;
+    final cropped = _croppedAvatarPath;
+    final avatarProvider = (cropped != null)
+        ? FileImage(File(cropped)) as ImageProvider
+        : (_avatarPath != null ? FileImage(File(_avatarPath!)) as ImageProvider : null);
 
     return Row(
       children: [
@@ -224,12 +260,9 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
                         child: SizedBox(
                           width: 56,
                           height: 56,
-                          child: Transform(
-                            transform: matrix ?? Matrix4.identity(),
-                            child: Image.file(
-                              File(_avatarPath!),
-                              fit: BoxFit.cover,
-                            ),
+                          child: Image(
+                            image: avatarProvider,
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ),
@@ -294,6 +327,12 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
   }
 }
 
+class _AvatarCropResult {
+  const _AvatarCropResult({required this.cropRectInImagePx});
+
+  final Rect cropRectInImagePx;
+}
+
 class _ProfileTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -352,9 +391,71 @@ class _AvatarCropperScreen extends StatefulWidget {
 class _AvatarCropperScreenState extends State<_AvatarCropperScreen> {
   final TransformationController _controller = TransformationController();
 
+  // Cache image dimensions
+  ui.Image? _decoded;
+  bool _decoding = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final bytes = await File(widget.imagePath).readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      _decoded = frame.image;
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _decoding = false;
+        _controller.value = Matrix4.identity()..scale(1.0);
+      });
+    }
+  }
+
+  Rect _computeCropRectInImagePx(double viewportSize) {
+    final img = _decoded;
+    if (img == null) {
+      return const Rect.fromLTWH(0, 0, 1, 1);
+    }
+
+    // With BoxFit.cover the image is scaled so the viewport is fully covered.
+    // We approximate cover scale based on viewport square.
+    final iw = img.width.toDouble();
+    final ih = img.height.toDouble();
+
+    final coverScale = (viewportSize / iw).clamp(0.0, double.infinity);
+    final coverScaleH = (viewportSize / ih).clamp(0.0, double.infinity);
+    final baseScale = coverScale > coverScaleH ? coverScale : coverScaleH;
+
+    // Controller matrix includes user scale and translation in viewport logical pixels.
+    final m = _controller.value;
+    final userScale = (m.storage[0] + m.storage[5]) / 2.0;
+    final dx = m.storage[12];
+    final dy = m.storage[13];
+
+    // Effective scale from image px -> viewport px
+    final s = baseScale * userScale;
+
+    // The viewport shows a square of size viewportSize.
+    // Map viewport (0..viewportSize) back to image px.
+    // Translation moves the child inside the viewport: positive dx means image moved right.
+    // Convert so that image origin in viewport is (-dx, -dy).
+    final leftPx = (-dx) / s;
+    final topPx = (-dy) / s;
+    final sizePx = viewportSize / s;
+
+    // Enforce square crop
+    return Rect.fromLTWH(leftPx, topPx, sizePx, sizePx);
+  }
+
   @override
   void dispose() {
     _controller.dispose();
+    _decoded?.dispose();
     super.dispose();
   }
 
@@ -363,6 +464,10 @@ class _AvatarCropperScreenState extends State<_AvatarCropperScreen> {
     const darkBg = Color(0xFF071814);
     const cardBg = Color(0xFF0d221a);
     const primary = Color(0xFF1b7f6b);
+
+    final size = MediaQuery.of(context).size;
+    final shortest = size.shortestSide;
+    final cropSize = (shortest * 0.82).clamp(280.0, 420.0);
 
     return Scaffold(
       backgroundColor: darkBg,
@@ -373,34 +478,103 @@ class _AvatarCropperScreenState extends State<_AvatarCropperScreen> {
         title: const Text('Centra avatar'),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(_controller.value);
-            },
+            onPressed: _decoding
+                ? null
+                : () {
+                    final rect = _computeCropRectInImagePx(cropSize);
+                    Navigator.of(context)
+                        .pop(_AvatarCropResult(cropRectInImagePx: rect));
+                  },
             child: const Text('Salva', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
       body: Center(
-        child: Container(
-          width: 320,
-          height: 320,
-          decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: primary),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InteractiveViewer(
-            transformationController: _controller,
-            minScale: 0.5,
-            maxScale: 4.0,
-            child: Image.file(
-              File(widget.imagePath),
-              fit: BoxFit.cover,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: cropSize,
+              height: cropSize,
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: primary),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: InteractiveViewer(
+                      transformationController: _controller,
+                      minScale: 0.4,
+                      maxScale: 8.0,
+                      panEnabled: true,
+                      boundaryMargin: const EdgeInsets.all(300),
+                      clipBehavior: Clip.none,
+                      child: Image.file(
+                        File(widget.imagePath),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _AvatarCropOverlayPainter(
+                          borderColor: Colors.white.withOpacity(0.35),
+                          scrimColor: Colors.black.withOpacity(0.35),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+            const SizedBox(height: 14),
+            const Text(
+              'Pizzica per zoomare, trascina per centrare.',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ],
         ),
       ),
     );
+  }
+}
+
+class _AvatarCropOverlayPainter extends CustomPainter {
+  _AvatarCropOverlayPainter({required this.borderColor, required this.scrimColor});
+
+  final Color borderColor;
+  final Color scrimColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.shortestSide / 2) - 16;
+
+    final circlePath = Path()..addOval(Rect.fromCircle(center: center, radius: radius));
+    final fullPath = Path()..addRect(rect);
+
+    // Scrim outside circle
+    final scrimPaint = Paint()
+      ..color = scrimColor
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(Path.combine(PathOperation.difference, fullPath, circlePath), scrimPaint);
+
+    // Circle border
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawCircle(center, radius, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AvatarCropOverlayPainter oldDelegate) {
+    return oldDelegate.borderColor != borderColor || oldDelegate.scrimColor != scrimColor;
   }
 }

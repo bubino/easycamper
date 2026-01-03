@@ -54,6 +54,22 @@ class _SpotReviewsScreenState extends State<SpotReviewsScreen> {
     }
   }
 
+  void _openPhotoViewer({
+    required List<String> photoPaths,
+    required int initialIndex,
+  }) {
+    if (photoPaths.isEmpty) return;
+
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.95),
+      builder: (_) => _PhotoViewerDialog(
+        photoPaths: photoPaths,
+        initialIndex: initialIndex,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const darkBg = Color(0xFF071814);
@@ -143,13 +159,19 @@ class _SpotReviewsScreenState extends State<SpotReviewsScreen> {
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
                       itemBuilder: (context, i) {
                         final file = File(r.photoPaths[i]);
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            file,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
+                        return GestureDetector(
+                          onTap: () => _openPhotoViewer(
+                            photoPaths: r.photoPaths,
+                            initialIndex: i,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              file,
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         );
                       },
@@ -366,6 +388,95 @@ class _AddReviewSheetState extends State<_AddReviewSheet> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PhotoViewerDialog extends StatefulWidget {
+  final List<String> photoPaths;
+  final int initialIndex;
+
+  const _PhotoViewerDialog({
+    required this.photoPaths,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_PhotoViewerDialog> createState() => _PhotoViewerDialogState();
+}
+
+class _PhotoViewerDialogState extends State<_PhotoViewerDialog> {
+  late final PageController _pageController;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _index = widget.initialIndex.clamp(0, widget.photoPaths.length - 1);
+    _pageController = PageController(initialPage: _index);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = widget.photoPaths.length;
+
+    return Dialog(
+      insetPadding: EdgeInsets.zero,
+      backgroundColor: Colors.transparent,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: total,
+              onPageChanged: (i) => setState(() => _index = i),
+              itemBuilder: (context, i) {
+                final path = widget.photoPaths[i];
+                return InteractiveViewer(
+                  minScale: 1.0,
+                  maxScale: 5.0,
+                  child: Center(
+                    child: Image.file(
+                      File(path),
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 8,
+            child: IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close, color: Colors.white),
+              tooltip: 'Chiudi',
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${_index + 1} / $total',
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
