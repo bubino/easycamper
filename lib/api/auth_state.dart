@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'auth_api.dart';
 import 'auth_storage.dart';
@@ -60,8 +61,11 @@ final authStorageProvider = Provider<AuthStorage>((ref) {
 });
 
 final authApiClientProvider = Provider<AuthApiClient>((ref) {
-  // TODO: prendi baseUrl da configurazione/env
-  return const AuthApiClient(kAuthBaseUrl);
+  final envBaseUrl = dotenv.env['API_BASE_URL'];
+  final baseUrl = (envBaseUrl != null && envBaseUrl.trim().isNotEmpty)
+      ? envBaseUrl.trim()
+      : kAuthBaseUrl;
+  return AuthApiClient(baseUrl);
 });
 
 class AuthController extends AsyncNotifier<AuthState> {

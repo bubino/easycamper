@@ -111,6 +111,7 @@ class _VehicleModelSearchScreenState extends State<VehicleModelSearchScreen> {
                   if (m.yearFrom != null) subtitleParts.add('dal ${m.yearFrom}');
                   if (m.lengthM != null) subtitleParts.add('L: ${m.lengthM} m');
                   if (m.heightM != null) subtitleParts.add('H: ${m.heightM} m');
+                  if (m.widthM != null) subtitleParts.add('W: ${m.widthM} m');
                   if (m.weightKg != null) subtitleParts.add('Peso: ${m.weightKg} kg');
 
                   return ListTile(

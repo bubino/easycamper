@@ -16,7 +16,12 @@ class MyVehiclesScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: darkBg,
         elevation: 0,
-        title: const Text('I miei veicoli'),
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text(
+          'I miei veicoli',
+          style: TextStyle(color: Colors.white),
+        ),
       ),
       body: SafeArea(
         child: Padding(

@@ -55,7 +55,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - .env
     - mock_data/spot.json
     - assets/data/brands.json
     - assets/logos/
     - assets/logos/brands/
+    - assets/icons/markers/

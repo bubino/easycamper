@@ -1,18 +1,15 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
+
 import 'api/spots_api.dart';
-import 'filters_panel.dart';
-import 'api/auth_state.dart';
 import 'profile_screen.dart';
 import 'spot_detail_screen.dart';
 import 'add_spot_screen.dart';
 import 'easycamper_map.dart';
 import 'saved_spots_screen.dart';
+import 'spot_search_screen.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -25,60 +22,31 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   late final SpotsApiClient _spotsApiClient;
   final GlobalKey<EasyCamperMapState> _mapKey = GlobalKey<EasyCamperMapState>();
 
-  List<SpotMarkerData> _currentSpots = [];
   Map<String, dynamic> _activeFilters = {};
   bool _isLoading = false;
   SpotMarkerData? _selectedSpot;
-  double? _lastKnownLat;
-  double? _lastKnownLng;
+  List<SpotMarkerData> _lastSpots = const [];
 
   bool get _isMobile => defaultTargetPlatform == TargetPlatform.iOS ||
       defaultTargetPlatform == TargetPlatform.android;
-
-  bool get _hasActiveFilters {
-    final tipiArea = (_activeFilters['tipiArea'] as Map<String, bool>?) ?? {};
-    final servizi = (_activeFilters['servizi'] as Map<String, bool>?) ?? {};
-    final minRating = (_activeFilters['minRating'] as double?) ?? 0;
-
-    final anyTipo = tipiArea.values.any((v) => v);
-    final anyServizio = servizi.values.any((v) => v);
-    return anyTipo || anyServizio || minRating > 0;
-  }
 
   @override
   void initState() {
     super.initState();
     _spotsApiClient = ref.read(spotsApiClientProvider);
-    _initLocation();
   }
 
-  Future<void> _initLocation() async {
+  Future<void> _centerOnUser() async {
     if (!_isMobile) return;
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
+    try {
+      final position = await Geolocator.getCurrentPosition();
+      await _mapKey.currentState?.centerOn(position.latitude, position.longitude, zoom: 12);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossibile ottenere la posizione. Controlla i permessi.')),
+      );
     }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      return;
-    }
-
-    final position = await Geolocator.getCurrentPosition();
-    if (!mounted) return;
-
-    setState(() {
-      _lastKnownLat = position.latitude;
-      _lastKnownLng = position.longitude;
-    });
-
-    await _mapKey.currentState
-        ?.centerOn(position.latitude, position.longitude, zoom: 12);
-  }
-
-  Future<void> _handleLogout() async {
-    await ref.read(authControllerProvider.notifier).logout();
-    if (!mounted) return;
-    context.go('/');
   }
 
   List<IconData> _pickServiceIcons(List<String> services) {
@@ -93,135 +61,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (has('Piscina')) icons.add(Icons.pool);
 
     return icons.take(3).toList();
-  }
-
-  void _showSpotDetails(SpotMarkerData spot) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      spot.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (spot.shortDescription != null &&
-                  spot.shortDescription!.trim().isNotEmpty)
-                Text(
-                  spot.shortDescription!,
-                  style: const TextStyle(fontSize: 14),
-                )
-              else
-                const Text(
-                  'Nessuna descrizione disponibile.',
-                  style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-                ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Icon(Icons.place, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Lat: ${spot.latitude.toStringAsFixed(4)}, Lng: ${spot.longitude.toStringAsFixed(4)}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.check),
-                  label: const Text('Chiudi'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _openFilters() {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black54,
-      barrierDismissible: true,
-      builder: (ctx) {
-        return _FiltersDialog(
-          initialFilters: _activeFilters,
-          onApplied: (filters) {
-            setState(() {
-              _activeFilters = filters;
-            });
-            _mapKey.currentState?.reload();
-          },
-        );
-      },
-    );
-  }
-
-  void _centerOnUser() async {
-    if (!_isMobile) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'La centratura automatica è disponibile solo su iOS/Android.'),
-        ),
-      );
-      return;
-    }
-
-    try {
-      final position = await Geolocator.getCurrentPosition();
-      setState(() {
-        _lastKnownLat = position.latitude;
-        _lastKnownLng = position.longitude;
-      });
-      await _mapKey.currentState
-          ?.centerOn(position.latitude, position.longitude, zoom: 12);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'Impossibile ottenere la posizione. Controlla i permessi GPS.'),
-        ),
-      );
-    }
-  }
-
-  void _openSpotDetail(Map<String, dynamic> rawSpot) {
-    final spot = SpotDto.fromJson(rawSpot);
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => SpotDetailScreen(spot: spot),
-      ),
-    );
   }
 
   String _mapTipoAreaReadable(String? backendType) {
@@ -259,8 +98,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  void _onBottomNavTap(int index) {
-    if (index == 1) {
+  void _onSpotsChanged(List<SpotMarkerData> spots) {
+    _lastSpots = spots;
+  }
+
+  void _onBottomNavTap(int index) async {
+    if (index == 2) {
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => const SavedSpotsScreen(),
@@ -276,11 +119,42 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Sezione non ancora disponibile nella preview.'),
-      ),
-    );
+    if (index == 1) {
+      final selected = await Navigator.of(context).push<SpotMarkerData>(
+        MaterialPageRoute(
+          builder: (_) => SpotSearchScreen(
+            initialSpots: _lastSpots,
+            spotsApiClient: _spotsApiClient,
+          ),
+        ),
+      );
+      if (selected != null) {
+        await _mapKey.currentState?.centerOn(
+          selected.latitude,
+          selected.longitude,
+          zoom: 13,
+        );
+      }
+      return;
+    }
+  }
+
+  void _openSpotDetailsFromMarker(SpotMarkerData spot) async {
+    try {
+      final api = ref.read(spotsApiClientProvider);
+      final detail = await api.fetchSpotById(spot.id);
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SpotDetailScreen(spot: detail),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossibile caricare i dettagli dello spot: $e')),
+      );
+    }
   }
 
   @override
@@ -299,11 +173,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               spotsApiClient: _spotsApiClient,
               isMobile: _isMobile,
               filtersBuilder: _buildFilters,
-              onSpotsChanged: (spots) {
-                setState(() {
-                  _currentSpots = spots;
-                });
-              },
+              onSpotsChanged: _onSpotsChanged,
               onSpotSelected: (spot) {
                 setState(() => _selectedSpot = spot);
               },
@@ -318,28 +188,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               right: 16,
               child: CircularProgressIndicator(),
             ),
-          Positioned(
-            left: 16,
-            right: 16,
-            top: 16 + MediaQuery.of(context).padding.top,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      hintText: 'Cerca destinazioni o servizi',
-                    ),
-                    enabled: false,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.my_location, color: Colors.white),
-                  onPressed: _centerOnUser,
-                ),
-              ],
-            ),
-          ),
           Positioned(
             left: 0,
             right: 0,
@@ -370,32 +218,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                // New filter button
-                InkWell(
-                  onTap: _openFilters,
-                  borderRadius: BorderRadius.circular(24),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _hasActiveFilters ? primary : const Color(0xFF0d221a),
-                      shape: BoxShape.circle,
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black54,
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.tune,
-                      color: _hasActiveFilters ? Colors.white : accentText,
-                      size: 20,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 10),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primary,
@@ -436,7 +259,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   serviceIcons: _pickServiceIcons(_selectedSpot!.services),
                   onClose: () => setState(() => _selectedSpot = null),
                   onDetails: () {
-                    _showSpotDetails(_selectedSpot!);
+                    _openSpotDetailsFromMarker(_selectedSpot!);
                   },
                 ),
               ),
@@ -492,6 +315,7 @@ class _SpotCard extends StatelessWidget {
   Widget build(BuildContext context) {
     const bg = Color(0xFF0d221a);
     const accentText = Color(0xFFd6f1e5);
+    final previewUrl = spot.photos.isNotEmpty ? spot.photos.first : null;
 
     return Material(
       color: Colors.transparent,
@@ -510,6 +334,24 @@ class _SpotCard extends StatelessWidget {
         ),
         child: Row(
           children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: previewUrl == null
+                  ? const Icon(Icons.photo, color: Colors.white54, size: 18)
+                  : Image.network(
+                      previewUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.photo, color: Colors.white54, size: 18),
+                    ),
+            ),
+            const SizedBox(width: 8),
             const Icon(Icons.place, color: accentText, size: 24),
             const SizedBox(width: 8),
             Expanded(
@@ -566,11 +408,11 @@ class _SpotCard extends StatelessWidget {
                     ),
                   const SizedBox(height: 4),
                   Row(
-                    children: serviceIcons
-                        .map((icon) => Padding(
-                              padding: const EdgeInsets.only(right: 4.0),
-                              child: Icon(icon,
-                                  size: 14, color: Colors.white70),
+                    children: spot.services
+                        .take(3)
+                        .map((label) => Padding(
+                              padding: const EdgeInsets.only(right: 6.0),
+                              child: serviceIconWidgetForLabel(label, size: 16),
                             ))
                         .toList(),
                   ),
@@ -589,44 +431,6 @@ class _SpotCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FiltersDialog extends StatelessWidget {
-  final Map<String, dynamic> initialFilters;
-  final ValueChanged<Map<String, dynamic>> onApplied;
-
-  const _FiltersDialog({
-    required this.initialFilters,
-    required this.onApplied,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isPhone = size.width < 600;
-
-    final maxWidth = isPhone ? size.width * 0.9 : 480.0;
-    final maxHeight = isPhone ? size.height * 0.75 : size.height * 0.7;
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: maxWidth,
-          maxHeight: maxHeight,
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: FiltersPanel(
-            // per ora ignoro initialFilters; potremo pre‑selezionare in futuro
-            onFiltersChanged: (filters) {
-              onApplied(filters);
-              Navigator.of(context).maybePop();
-            },
-          ),
         ),
       ),
     );

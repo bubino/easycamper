@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'auth_state.dart';
 
@@ -9,11 +10,23 @@ class ApiHttpClient {
   final Ref ref;
   final http.Client _client;
 
+  static DateTime? _refreshCooldownUntil;
+
   ApiHttpClient({
     required this.baseUrl,
     required this.ref,
     http.Client? client,
   }) : _client = client ?? http.Client();
+
+  bool get _isInRefreshCooldown {
+    final until = _refreshCooldownUntil;
+    if (until == null) return false;
+    return DateTime.now().isBefore(until);
+  }
+
+  void _startRefreshCooldown([Duration duration = const Duration(seconds: 20)]) {
+    _refreshCooldownUntil = DateTime.now().add(duration);
+  }
 
   Future<http.Response> get(
     String path, {
@@ -129,6 +142,9 @@ class ApiHttpClient {
   }
 
   Future<bool> _tryRefreshToken() async {
+    if (_isInRefreshCooldown) {
+      return false;
+    }
     try {
       final storage = ref.read(authStorageProvider);
       final authApi = ref.read(authApiClientProvider);
@@ -138,6 +154,8 @@ class ApiHttpClient {
       controller.setSessionFromResult(refreshResult);
       return true;
     } catch (e, st) {
+      // Cooldown so we don't spam /auth/refresh and trigger 429
+      _startRefreshCooldown();
       if (kDebugMode) {
         debugPrint('REFRESH DEBUG: errore durante /auth/refresh: $e');
         debugPrint(st.toString());
@@ -148,6 +166,9 @@ class ApiHttpClient {
 }
 
 final apiHttpClientProvider = Provider<ApiHttpClient>((ref) {
-  const baseUrl = 'http://127.0.0.1:3000';
+  final envBaseUrl = dotenv.env['API_BASE_URL'];
+  final baseUrl = (envBaseUrl != null && envBaseUrl.trim().isNotEmpty)
+      ? envBaseUrl.trim()
+      : 'http://127.0.0.1:3000';
   return ApiHttpClient(baseUrl: baseUrl, ref: ref);
 });

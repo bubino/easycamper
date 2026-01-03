@@ -7,6 +7,7 @@ class Vehicle {
   final int year;
   final double lengthMeters;
   final double heightMeters;
+  final double widthMeters;
   final double weightKg;
 
   const Vehicle({
@@ -16,6 +17,7 @@ class Vehicle {
     required this.year,
     required this.lengthMeters,
     required this.heightMeters,
+    required this.widthMeters,
     required this.weightKg,
   });
 
@@ -26,6 +28,7 @@ class Vehicle {
     int? year,
     double? lengthMeters,
     double? heightMeters,
+    double? widthMeters,
     double? weightKg,
   }) {
     return Vehicle(
@@ -35,6 +38,7 @@ class Vehicle {
       year: year ?? this.year,
       lengthMeters: lengthMeters ?? this.lengthMeters,
       heightMeters: heightMeters ?? this.heightMeters,
+      widthMeters: widthMeters ?? this.widthMeters,
       weightKg: weightKg ?? this.weightKg,
     );
   }

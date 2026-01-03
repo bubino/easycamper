@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:provider/provider.dart' as legacy_provider;
-import 'api/favorites_provider.dart';
+
 import 'api/spots_api.dart';
 import 'spot_detail_screen.dart';
+import 'storage/favorites_storage.dart' show favoritesProvider;
 
 class SavedSpotsScreen extends ConsumerWidget {
   const SavedSpotsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final favorites = legacy_provider.Provider.of<FavoritesProvider>(context);
-    final ids = favorites.favoriteSpotIds.toList();
+    final ids = ref.watch(favoritesProvider).toList();
+    final favorites = ref.read(favoritesProvider.notifier);
     final spotsApi = ref.watch(spotsApiClientProvider);
 
     return Scaffold(
@@ -37,7 +37,7 @@ class SavedSpotsScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                  onDismissed: (_) => favorites.removeFavorite(id),
+                  onDismissed: (_) => favorites.remove(id),
                   child: ListTile(
                     title: Text(cached?.name ?? 'Spot $id'),
                     subtitle: Text(
@@ -49,21 +49,22 @@ class SavedSpotsScreen extends ConsumerWidget {
                     ),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete_outline),
-                      onPressed: () => favorites.removeFavorite(id),
+                      onPressed: () => favorites.remove(id),
                     ),
                     onTap: () async {
                       try {
                         final spot = cached ?? await spotsApi.fetchSpotById(id);
+                        if (!context.mounted) return;
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => SpotDetailScreen(spot: spot),
                           ),
                         );
-                      } catch (e) {
+                      } catch (_) {
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text(
-                                'Impossibile caricare i dettagli dello spot.'),
+                            content: Text('Impossibile caricare i dettagli dello spot.'),
                           ),
                         );
                       }

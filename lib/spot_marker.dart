@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import 'api/spots_api.dart';
+import 'api/spot_dto.dart';
 import 'spot_detail_screen.dart';
 
 class SpotMarker extends StatelessWidget {
@@ -16,20 +18,12 @@ class SpotMarker extends StatelessWidget {
 
   Color getTypeColor() {
     switch (spot.type) {
-      case 'Area Sosta':
-        return Color(0xFF1b7f6b);
-      case 'Campeggio':
-        return Color(0xFF2e5fa5);
-      case 'Carico Acqua':
-        return Color(0xFF4fc3f7);
-      case 'Scarico':
-        return Color(0xFF8e24aa);
-      case 'Elettricità':
-        return Color(0xFFffd600);
-      case 'Pet Friendly':
-        return Color(0xFFff7043);
-      case 'Vista Panoramica':
-        return Color(0xFF00bcd4);
+      case 'area_sosta':
+        return const Color(0xFF1b7f6b);
+      case 'campeggio':
+        return const Color(0xFF2e5fa5);
+      case 'agricampeggio':
+        return const Color(0xFF4fc3f7);
       default:
         return Colors.blueGrey;
     }
@@ -38,29 +32,31 @@ class SpotMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        final dto = SpotDto(
-          id: spot.id,
-          name: spot.name,
-          description: spot.shortDescription ?? '',
-          latitude: spot.latitude,
-          longitude: spot.longitude,
-          type: spot.type,
-          services: spot.services,
-          rating: spot.rating ?? 0,
-        );
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => SpotDetailScreen(spot: dto),
-          ),
-        );
-      },
+      onTap: onTap ??
+          () {
+            final dto = SpotDto(
+              id: spot.id,
+              name: spot.name,
+              description: spot.shortDescription ?? '',
+              lat: spot.latitude,
+              lng: spot.longitude,
+              type: spot.type ?? 'area_sosta',
+              services: spot.services,
+              rating: spot.rating ?? 0,
+              photos: const [],
+            );
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => SpotDetailScreen(spot: dto),
+              ),
+            );
+          },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.85),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
         ),
         child: Column(
           children: [
@@ -69,11 +65,14 @@ class SpotMarker extends StatelessWidget {
               color: getTypeColor(),
               size: 28,
             ),
-            Text(spot.name,
-                style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              spot.name,
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),

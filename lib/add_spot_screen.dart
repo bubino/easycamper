@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
+import 'package:flutter/services.dart';
 
 import 'api/spots_api.dart';
 import 'location_picker_screen.dart';
@@ -15,6 +17,78 @@ class AddSpotScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<AddSpotScreen> createState() => _AddSpotScreenState();
+}
+
+// Add top-level helper for service icons (so it can be used by nested widgets too)
+String? serviceIconAssetForLabel(String label) {
+  final lower = label.toLowerCase().trim();
+
+  // Normalize underscores/hyphens
+  final norm = lower.replaceAll('‑', '-');
+
+  // Backend keys support (english / snake_case)
+  if (norm == 'animals' || norm.contains('animali')) {
+    return 'assets/icons/markers/service_animaux.png';
+  }
+  if (norm == 'showers' || norm.contains('docce')) {
+    return 'assets/icons/markers/service_douche.png';
+  }
+  if (norm == 'wifi' || norm.contains('wi-fi') || norm.contains('wi‑fi')) {
+    return 'assets/icons/markers/service_wifi.png';
+  }
+  if (norm == 'electricity' || norm.contains('elettric')) {
+    return 'assets/icons/markers/service_electricite.png';
+  }
+  if (norm == 'water' ||
+      norm.contains('acqua potabile') ||
+      (norm.contains('acqua') &&
+          !norm.contains('nere') &&
+          !norm.contains('grigie') &&
+          !norm.contains('black') &&
+          !norm.contains('grey'))) {
+    return 'assets/icons/markers/service_point_eau.png';
+  }
+  if (norm == 'black_water' || norm.contains('nere') || norm.contains('black')) {
+    return 'assets/icons/markers/service_eau_noire.png';
+  }
+  if (norm == 'grey_water' ||
+      norm.contains('grigie') ||
+      norm.contains('grey') ||
+      norm.contains('us')) {
+    return 'assets/icons/markers/service_eau_usee.png';
+  }
+  if (norm == 'laundry' || norm.contains('lavanderia')) {
+    return 'assets/icons/markers/service_laverie.png';
+  }
+  if (norm == 'wash' || norm.contains('lavaggio')) {
+    return 'assets/icons/markers/service_lavage.png';
+  }
+  if (norm == 'gpl' || norm.contains('gpl')) {
+    return 'assets/icons/markers/service_gpl.png';
+  }
+  if (norm == 'gas' || norm.contains('gaz') || norm.contains('gas')) {
+    return 'assets/icons/markers/service_gaz.png';
+  }
+  if (norm == 'trash' ||
+      norm.contains('cestini') ||
+      norm.contains('rifiuti') ||
+      norm.contains('pattum')) {
+    return 'assets/icons/markers/service_poubelle.png';
+  }
+  if (norm == 'toilet_public' || norm.contains('bagni') || norm.contains('wc')) {
+    return 'assets/icons/markers/service_wc_public.png';
+  }
+
+  return null;
+}
+
+Widget serviceIconWidgetForLabel(String label,
+    {double size = 18, Color? tint}) {
+  final asset = serviceIconAssetForLabel(label);
+  if (asset == null) {
+    return Icon(_iconForAmenity(label), size: size, color: tint ?? Colors.white70);
+  }
+  return Image.asset(asset, width: size, height: size);
 }
 
 class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
@@ -54,18 +128,94 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
     'Acqua potabile': 'water',
     'Scarico acque nere': 'black_water',
     'Scarico acque grigie': 'grey_water',
-    'Wi-Fi': 'wifi',
+    'Bagni pubblici': 'toilet_public',
     'Docce': 'showers',
-    'WC': 'toilet',
-    // aggiungi qui altre mappature se necessarie
+    'Wi‑Fi': 'wifi',
+    'Animali ammessi': 'animals',
+    'Lavanderia': 'laundry',
+    'GPL': 'gpl',
+    'Lavaggio camper': 'wash',
+    'Cestini rifiuti': 'trash',
   };
 
   bool _isSaving = false;
+
+  mb.MapboxMap? _previewMap;
+  mb.PointAnnotationManager? _previewAnnoMgr;
+
+  String _assetForSelectedType() {
+    switch (_selectedType) {
+      case 'campeggio':
+        return 'assets/icons/markers/icon_c.png';
+      case 'agricampeggio':
+        return 'assets/icons/markers/icon_ar.png';
+      case 'area_sosta':
+      default:
+        return 'assets/icons/markers/icon_p.png';
+    }
+  }
+
+  Future<Uint8List?> _loadMarkerBytes(String assetPath) async {
+    try {
+      final data = await rootBundle.load(assetPath);
+      return data.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _renderPreviewMarker() async {
+    final map = _previewMap;
+    if (map == null) return;
+    final lat = _lat;
+    final lng = _lng;
+    if (lat == null || lng == null) return;
+
+    _previewAnnoMgr ??= await map.annotations.createPointAnnotationManager();
+    await _previewAnnoMgr!.deleteAll();
+
+    final bytes = await _loadMarkerBytes(_assetForSelectedType()) ??
+        await _loadMarkerBytes('assets/icons/markers/icon_p.png');
+
+    await _previewAnnoMgr!.create(
+      mb.PointAnnotationOptions(
+        geometry: mb.Point(coordinates: mb.Position(lng, lat)),
+        image: bytes,
+        iconSize: 1.4,
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Proviamo a preimpostare la posizione così la preview mappa appare subito.
+    // Se i permessi non sono disponibili, l'utente può comunque scegliere manualmente.
+    Future<void>.delayed(Duration.zero, () async {
+      if (!mounted) return;
+      if (_lat != null && _lng != null) return;
+      final ok = await _ensureLocationPermission();
+      if (!ok) return;
+      try {
+        final position = await Geolocator.getCurrentPosition();
+        if (!mounted) return;
+        setState(() {
+          _lat = position.latitude;
+          _lng = position.longitude;
+          _locationSource = SpotLocationSource.currentLocation;
+        });
+      } catch (_) {
+        // ignore
+      }
+    });
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
+    _previewAnnoMgr?.deleteAll();
+    _previewAnnoMgr = null;
     super.dispose();
   }
 
@@ -134,6 +284,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
         _lng = position.longitude;
         _locationSource = SpotLocationSource.currentLocation;
       });
+      _syncPreviewCamera();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -158,7 +309,30 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
         _lng = result['lng'];
         _locationSource = SpotLocationSource.manual;
       });
+      _syncPreviewCamera();
     }
+  }
+
+  void _onPreviewMapCreated(mb.MapboxMap map) {
+    _previewMap = map;
+    _syncPreviewCamera();
+    _renderPreviewMarker();
+  }
+
+  void _syncPreviewCamera() {
+    if (_previewMap == null) return;
+    final lat = _lat;
+    final lng = _lng;
+    if (lat == null || lng == null) return;
+
+    _previewMap!.setCamera(
+      mb.CameraOptions(
+        center: mb.Point(coordinates: mb.Position(lng, lat)),
+        zoom: 13.0,
+      ),
+    );
+
+    _renderPreviewMarker();
   }
 
   Future<void> _submit() async {
@@ -213,7 +387,63 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
   }
 
   Future<void> _openServicesPicker() async {
-    // ...existing code from lib_backup/_openServicesPicker...
+    final result = await showModalBottomSheet<Map<String, bool>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          builder: (_, scrollController) {
+            return _ServicesPickerSheet(
+              initialServices: _services,
+              scrollController: scrollController,
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        _services
+          ..clear()
+          ..addAll(result);
+      });
+    }
+  }
+
+  Widget _tipoAreaChip({
+    required String value,
+    required String label,
+    required String asset,
+  }) {
+    final selected = _selectedType == value;
+    return ChoiceChip(
+      selected: selected,
+      onSelected: (_) {
+        setState(() {
+          _selectedType = value;
+        });
+        _renderPreviewMarker();
+      },
+      backgroundColor: const Color(0xFF0d221a),
+      selectedColor: const Color(0xFF123426),
+      side: BorderSide(
+        color: selected ? const Color(0xFF1b7f6b) : const Color(0xFF3b4a3a),
+      ),
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(asset, width: 18, height: 18),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: Colors.white)),
+        ],
+      ),
+    );
   }
 
   @override
@@ -238,7 +468,6 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
         locationIcon = Icons.place;
         break;
       case SpotLocationSource.none:
-      default:
         locationLabel = 'Posizione non impostata';
         locationIcon = Icons.help_outline;
         break;
@@ -357,29 +586,41 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // Preview mappa testuale
+                      // Preview mappa (ripristinata)
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: Container(
+                        child: SizedBox(
                           height: 160,
                           width: double.infinity,
-                          color: cardBg,
-                          child: Center(
-                            child: Text(
-                              _lat != null && _lng != null
-                                  ? 'Preview mappa\nLat ${_lat!.toStringAsFixed(4)}, Lng ${_lng!.toStringAsFixed(4)}'
-                                  : 'Imposta una posizione per vedere l\'anteprima sulla mappa',
-                              style: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 13,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
+                          child: _lat != null && _lng != null
+                              ? mb.MapWidget(
+                                  key: const ValueKey('add_spot_preview_map'),
+                                  cameraOptions: mb.CameraOptions(
+                                    center: mb.Point(
+                                      coordinates: mb.Position(_lng!, _lat!),
+                                    ),
+                                    zoom: 13.0,
+                                  ),
+                                  styleUri: mb.MapboxStyles.MAPBOX_STREETS,
+                                  onMapCreated: _onPreviewMapCreated,
+                                )
+                              : Container(
+                                  color: cardBg,
+                                  child: const Center(
+                                    child: Text(
+                                      "Imposta una posizione per vedere l'anteprima sulla mappa",
+                                      style: TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 13,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // === Tipo di area (allineato ai filtri) ===
+                      // === Tipo di area (con icone marker PNG) ===
                       const Text(
                         'Tipo di area',
                         style: TextStyle(
@@ -393,9 +634,21 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          _buildTipoAreaChip('area_sosta', 'Area di sosta', Icons.local_parking),
-                          _buildTipoAreaChip('campeggio', 'Campeggio', Icons.park),
-                          _buildTipoAreaChip('agricampeggio', 'Agricampeggio', Icons.park),
+                          _tipoAreaChip(
+                            value: 'area_sosta',
+                            label: 'Area di sosta',
+                            asset: 'assets/icons/markers/icon_p.png',
+                          ),
+                          _tipoAreaChip(
+                            value: 'campeggio',
+                            label: 'Campeggio',
+                            asset: 'assets/icons/markers/icon_c.png',
+                          ),
+                          _tipoAreaChip(
+                            value: 'agricampeggio',
+                            label: 'Agricampeggio',
+                            asset: 'assets/icons/markers/icon_ar.png',
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -475,11 +728,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                                   label: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(
-                                        _iconForAmenity(name),
-                                        size: 14,
-                                        color: Colors.white70,
-                                      ),
+                                      serviceIconWidgetForLabel(name, size: 14),
                                       const SizedBox(width: 4),
                                       Text(
                                         name,
@@ -641,26 +890,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
   }
 }
 
-// Helper identical to lib_backup/add_spot_screen.dart
-
-Widget _buildTipoAreaChip(String value, String label, IconData icon) {
-  // ...existing implementation from backup...
-  return ChoiceChip(
-    label: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16),
-        const SizedBox(width: 4),
-        Text(label),
-      ],
-    ),
-    selected: false,
-    onSelected: (_) {},
-  );
-}
-
 IconData _iconForAmenity(String label) {
-  // ...existing implementation from backup...
   final lower = label.toLowerCase();
   if (lower.contains('elettric')) return Icons.bolt;
   if (lower.contains('acqua potabile')) return Icons.water_drop;
@@ -812,10 +1042,8 @@ class _AmenitiesSelectionState extends State<_AmenitiesSelection> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      _iconForAmenity(e.key),
-                      color: Colors.white70,
-                    ),
+                    // Use PNG service icons when available
+                    serviceIconWidgetForLabel(e.key, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(

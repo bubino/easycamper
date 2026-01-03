@@ -35,7 +35,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
     _lengthCtrl.text = v?.lengthMeters.toString() ?? '';
     _heightCtrl.text = v?.heightMeters.toString() ?? '';
     _weightCtrl.text = v?.weightKg.toString() ?? '';
-    _widthCtrl.text = v?.widthMeters?.toString() ?? ''; // se esiste nel model
+    _widthCtrl.text = v?.widthMeters.toString() ?? '';
   }
 
   @override
@@ -210,8 +210,8 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
       year: int.tryParse(_yearCtrl.text.trim()) ?? 2000,
       lengthMeters: double.tryParse(_lengthCtrl.text.trim()) ?? 0,
       heightMeters: double.tryParse(_heightCtrl.text.trim()) ?? 0,
+      widthMeters: double.tryParse(_widthCtrl.text.trim()) ?? 0,
       weightKg: double.tryParse(_weightCtrl.text.trim()) ?? 0,
-      widthMeters: double.tryParse(_widthCtrl.text.trim()), // nuova proprietà
     );
 
     try {

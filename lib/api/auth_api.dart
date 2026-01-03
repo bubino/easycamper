@@ -108,6 +108,9 @@ class AuthApiClient {
 
     if (resp.statusCode != 200) {
       String message = 'Refresh token fallito (${resp.statusCode})';
+      if (resp.statusCode == 429) {
+        message = 'Troppe richieste, riprova più tardi.';
+      }
       try {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
         if (data['error'] is String) {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// DTO per i modelli di veicolo restituiti da /api/vehicle-models
 class VehicleModelDto {
@@ -10,6 +11,7 @@ class VehicleModelDto {
   final int? yearFrom;
   final double? lengthM;
   final double? heightM;
+  final double? widthM;
   final double? weightKg;
   final String? type;
   final String? brandSlug;
@@ -21,6 +23,7 @@ class VehicleModelDto {
     this.yearFrom,
     this.lengthM,
     this.heightM,
+    this.widthM,
     this.weightKg,
     this.type,
     this.brandSlug,
@@ -40,6 +43,7 @@ class VehicleModelDto {
       yearFrom: json['year_from'] is int ? json['year_from'] as int : int.tryParse(json['year_from']?.toString() ?? ''),
       lengthM: _toDouble(json['length_m']),
       heightM: _toDouble(json['height_m']),
+      widthM: _toDouble(json['width_m']),
       weightKg: _toDouble(json['weight_kg']),
       type: json['type']?.toString(),
       brandSlug: json['brand_slug']?.toString(),
@@ -52,7 +56,11 @@ class VehicleModelDto {
 class VehicleModelsApi {
   VehicleModelsApi({http.Client? client, String? baseUrl})
       : _client = client ?? http.Client(),
-        _baseUrl = baseUrl ?? 'http://127.0.0.1:3000';
+        _baseUrl = baseUrl ??
+            ((dotenv.env['API_BASE_URL'] != null &&
+                    dotenv.env['API_BASE_URL']!.trim().isNotEmpty)
+                ? dotenv.env['API_BASE_URL']!.trim()
+                : 'http://127.0.0.1:3000');
 
   final http.Client _client;
   final String _baseUrl;

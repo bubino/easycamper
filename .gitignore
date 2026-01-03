@@ -70,3 +70,31 @@ assets/data/nord.osm-gh.test/map.test.pbf
 assets/data/nord.osm-gh.test/graph-cache/edges
 *.pbf
 **/graph-cache/
+
+# Local env (never commit)
+.env
+
+# Flutter/Dart build artifacts
+.dart_tool/
+build/
+
+# iOS generated
+ios/Pods/
+ios/Runner.xcworkspace/
+ios/Flutter/ephemeral/
+
+# macOS generated
+macos/Pods/
+macos/Runner.xcworkspace/
+macos/Flutter/ephemeral/
+
+# Android / Gradle generated
+android/.gradle/
+android/local.properties
+
+# Xcode user data
+**/*.xcuserstate
+**/xcuserdata/
+
+# Logs
+*.log

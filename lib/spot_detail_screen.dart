@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'api/spot_dto.dart';
+import 'storage/favorites_storage.dart' show favoritesProvider;
 import 'spot_reviews_screen.dart';
 import 'navigation_options_screen.dart';
+import 'add_spot_screen.dart' show serviceIconWidgetForLabel;
 
-class SpotDetailScreen extends StatelessWidget {
+class SpotDetailScreen extends ConsumerWidget {
   final SpotDto spot;
 
   const SpotDetailScreen({super.key, required this.spot});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const darkBg = Color(0xFF071814);
     const primary = Color(0xFF1b7f6b);
+
+    final favoriteIds = ref.watch(favoritesProvider);
+    final isFav = favoriteIds.contains(spot.id);
 
     return Scaffold(
       backgroundColor: darkBg,
@@ -31,13 +38,38 @@ class SpotDetailScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            spot.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  spot.name,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () {
+                                  ref
+                                      .read(favoritesProvider.notifier)
+                                      .toggle(spot.id);
+                                },
+                                icon: Icon(
+                                  isFav
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: isFav
+                                      ? Colors.redAccent
+                                      : Colors.white70,
+                                ),
+                                tooltip: isFav
+                                    ? 'Rimuovi dai preferiti'
+                                    : 'Aggiungi ai preferiti',
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -179,35 +211,16 @@ class _AmenitiesGrid extends StatelessWidget {
 
   const _AmenitiesGrid({required this.services});
 
-  IconData _iconForService(String label) {
-    final lower = label.toLowerCase();
-    if (lower.contains('elettricit')) return Icons.bolt;
-    if (lower.contains('acqua')) return Icons.water_drop;
-    if (lower.contains('wi')) return Icons.wifi;
-    if (lower.contains('animali')) return Icons.pets;
-    if (lower.contains('wc') || lower.contains('bagni')) return Icons.wc;
-    if (lower.contains('docce')) return Icons.shower;
-    if (lower.contains('ristorante') || lower.contains('bar')) {
-      return Icons.restaurant;
-    }
-    if (lower.contains('lavanderia')) return Icons.local_laundry_service;
-    if (lower.contains('parco') || lower.contains('gioco')) {
-      return Icons.park;
-    }
-    return Icons.check_circle_outline;
-  }
-
   @override
   Widget build(BuildContext context) {
     final items = services.isEmpty
-        ? <String>['Elettricità', 'Acqua', 'Wi‑Fi', 'Animali ammessi']
+        ? <String>['Elettricità', 'Acqua potabile', 'Wi‑Fi', 'Animali ammessi']
         : services;
 
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: items.map((label) {
-        final icon = _iconForService(label);
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
@@ -218,7 +231,8 @@ class _AmenitiesGrid extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 14, color: const Color(0xFF1b7f6b)),
+              // PNG icons consistent with AddSpotScreen
+              serviceIconWidgetForLabel(label, size: 14),
               const SizedBox(width: 4),
               Text(
                 label,

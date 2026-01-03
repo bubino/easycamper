@@ -90,7 +90,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
         children: [
           Positioned.fill(
             child: MapWidget(
-              cameraOptions: const CameraOptions(
+              cameraOptions: CameraOptions(
                 center: Point(coordinates: Position(9.19, 45.4642)),
                 zoom: 5.0,
               ),

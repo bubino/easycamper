@@ -1,12 +1,10 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mapbox_gl/mapbox_gl.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'api/spots_api.dart';
-import 'spot_marker.dart';
 import 'mapbox_config.dart';
 
 // Rende il tipo di filtri riutilizzabile da altre schermate
@@ -47,39 +45,135 @@ class EasyCamperMap extends StatefulWidget {
 }
 
 class EasyCamperMapState extends State<EasyCamperMap> {
-  MapboxMapController? _mapController;
-  List<SpotMarkerData> _spots = [];
-  final Map<String, SpotMarkerData> _symbolIdToSpot = {};
+  MapboxMap? _mapboxMap;
+  PointAnnotationManager? _pointAnnoManager;
 
-  bool get _isMobile => widget.isMobile;
+  List<SpotMarkerData> _spots = [];
+  final Map<String?, SpotMarkerData> _annotationIdToSpot = {};
+
+  int _refreshToken = 0;
+
+  final Map<String, Uint8List?> _markerBytesByAsset = {};
+
+  String? _lastRenderedSignature;
+
+  // Removed temporary zoom gating; clustering will be implemented properly next.
+  // static const double _minZoomToShowPois = 9.5;
+
+  Future<Uint8List?> _loadMarkerBytes(String assetPath) async {
+    if (_markerBytesByAsset.containsKey(assetPath)) {
+      return _markerBytesByAsset[assetPath];
+    }
+    try {
+      final data = await rootBundle.load(assetPath);
+      final bytes = data.buffer.asUint8List();
+      _markerBytesByAsset[assetPath] = bytes;
+      return bytes;
+    } catch (_) {
+      _markerBytesByAsset[assetPath] = null;
+      return null;
+    }
+  }
+
+  String _assetForSpotType(String? type) {
+    switch (type) {
+      case 'campeggio':
+        return 'assets/icons/markers/icon_c.png';
+      case 'agricampeggio':
+        return 'assets/icons/markers/icon_ar.png';
+      case 'area_sosta':
+      default:
+        return 'assets/icons/markers/icon_p.png';
+    }
+  }
+
+  String _spotsSignature(List<SpotMarkerData> spots) {
+    // Stable signature to detect no-op refreshes
+    return spots
+        .map((s) => '${s.id}:${s.latitude.toStringAsFixed(5)},${s.longitude.toStringAsFixed(5)}')
+        .join('|');
+  }
 
   // Permette alla schermata esterna di recentrare la camera sulla posizione passata
   Future<void> centerOn(double lat, double lng, {double zoom = 12}) async {
-    if (_mapController == null) return;
-    await _mapController!.moveCamera(
-      CameraUpdate.newLatLngZoom(LatLng(lat, lng), zoom),
+    final map = _mapboxMap;
+    if (map == null) return;
+
+    map.setCamera(
+      CameraOptions(
+        center: Point(coordinates: Position(lng, lat)),
+        zoom: zoom,
+      ),
     );
   }
 
   Future<void> reload() async {
-    await _onMapIdle();
+    // Force next refresh to re-render even if signature matches
+    _lastRenderedSignature = null;
+    _onMapIdle();
   }
 
   void _setLoading(bool value) {
     widget.onLoadingChanged?.call(value);
   }
 
-  Future<void> _onMapIdle() async {
-    // Carichiamo sempre dagli endpoint reali; i mock restano solo come fallback
-    if (_mapController == null) return;
+  void _onMapCreated(MapboxMap mapboxMap) async {
+    _mapboxMap = mapboxMap;
+
+    // token (set globale)
+    MapboxOptions.setAccessToken(mapboxAccessToken);
+
+    final annos = mapboxMap.annotations;
+    _pointAnnoManager = await annos.createPointAnnotationManager();
+
+    // Tap events: in 2.0.0 il listener consigliato è tapListener. (tapEvents può non essere presente)
+    _pointAnnoManager?.addOnPointAnnotationClickListener(
+      _PointAnnoClickListener(_annotationIdToSpot, widget.onSpotSelected),
+    );
+
+    await _refreshSpotsForCurrentCamera();
+  }
+
+  void _onMapIdle() {
+    // debounce/coalescing: se arrivano più idle ravvicinati, eseguiamo solo l'ultimo
+    final token = ++_refreshToken;
+    Future<void>.delayed(const Duration(milliseconds: 450)).then((_) {
+      if (!mounted) return;
+      if (token != _refreshToken) return;
+      _refreshSpotsForCurrentCamera();
+    });
+  }
+
+  Future<void> _refreshSpotsForCurrentCamera() async {
+    final map = _mapboxMap;
+    if (map == null) return;
 
     _setLoading(true);
     try {
-      final region = await _mapController!.getVisibleRegion();
-      final latMin = region.southwest.latitude;
-      final lngMin = region.southwest.longitude;
-      final latMax = region.northeast.latitude;
-      final lngMax = region.northeast.longitude;
+      final state = await map.getCameraState();
+
+      // bbox reale della viewport (normalizzato)
+      final bounds =
+          await map.coordinateBoundsForCamera(state.toCameraOptions());
+      final sw = bounds.southwest;
+      final ne = bounds.northeast;
+
+      double latMin = sw.coordinates.lat.toDouble();
+      double lngMin = sw.coordinates.lng.toDouble();
+      double latMax = ne.coordinates.lat.toDouble();
+      double lngMax = ne.coordinates.lng.toDouble();
+
+      // Normalize in case values are swapped
+      if (latMin > latMax) {
+        final tmp = latMin;
+        latMin = latMax;
+        latMax = tmp;
+      }
+      if (lngMin > lngMax) {
+        final tmp = lngMin;
+        lngMin = lngMax;
+        lngMax = tmp;
+      }
 
       final filters = widget.filtersBuilder();
 
@@ -94,9 +188,23 @@ class EasyCamperMapState extends State<EasyCamperMap> {
           services: filters.services,
           minRating: filters.minRating,
         );
-      } catch (_) {
-        // Fallback ai mock solo se l’API fallisce
+      } catch (e) {
+        // Debug: if backend query fails we fallback to mock
+        // ignore: avoid_print
+        print('SPOTS DEBUG: backend fetch failed: $e');
         spots = await _loadMockSpotsFromBundle(filters);
+      }
+
+      // ignore: avoid_print
+      print(
+          'SPOTS DEBUG: bbox=[$latMin,$lngMin,$latMax,$lngMax] -> ${spots.length} spots');
+
+      if (!mounted) return;
+
+      final sig = _spotsSignature(spots);
+      if (_lastRenderedSignature == sig) {
+        widget.onSpotsChanged(spots);
+        return;
       }
 
       setState(() {
@@ -104,6 +212,7 @@ class EasyCamperMapState extends State<EasyCamperMap> {
       });
 
       await _renderSpotsOnMap();
+      _lastRenderedSignature = sig;
       widget.onSpotsChanged(spots);
     } finally {
       _setLoading(false);
@@ -125,10 +234,7 @@ class EasyCamperMapState extends State<EasyCamperMap> {
         longitude: (m['lng'] as num).toDouble(),
         shortDescription: m['description'] as String?,
         type: m['type'] as String?,
-        services: (m['services'] as List<dynamic>?)
-                ?.map((s) => s.toString())
-                .toList() ??
-            const [],
+        services: (m['services'] as List<dynamic>?)?.map((s) => s.toString()).toList() ?? const [],
         rating: (m['rating'] as num?)?.toDouble(),
       );
     }).toList();
@@ -144,8 +250,7 @@ class EasyCamperMapState extends State<EasyCamperMap> {
       // Servizi
       if (filters.services.isNotEmpty) {
         final setServizi = s.services.toSet();
-        final anyRequired =
-            filters.services.any((req) => setServizi.contains(req));
+        final anyRequired = filters.services.any((req) => setServizi.contains(req));
         if (!anyRequired) return false;
       }
       // Rating
@@ -158,20 +263,35 @@ class EasyCamperMapState extends State<EasyCamperMap> {
   }
 
   Future<void> _renderSpotsOnMap() async {
-    if (_mapController == null) return;
-    await _mapController!.clearSymbols();
-    _symbolIdToSpot.clear();
+    final mgr = _pointAnnoManager;
+    if (mgr == null) return;
 
+    _annotationIdToSpot.clear();
+    await mgr.deleteAll();
+
+    final annotations = <PointAnnotationOptions>[];
     for (final spot in _spots) {
-      final symbol = await _mapController!.addSymbol(
-        SymbolOptions(
-          geometry: LatLng(spot.latitude, spot.longitude),
-          iconImage: 'assets/icons/marker.png',
-          textField: spot.name,
-          textOffset: const Offset(0, 1.2),
+      final asset = _assetForSpotType(spot.type);
+      final bytes = await _loadMarkerBytes(asset) ??
+          await _loadMarkerBytes('assets/icons/markers/icon_p.png');
+
+      annotations.add(
+        PointAnnotationOptions(
+          geometry: Point(coordinates: Position(spot.longitude, spot.latitude)),
+          image: bytes,
+          // Bigger markers to make tapping easier on real iPhone.
+          iconSize: 2.6,
         ),
       );
-      _symbolIdToSpot[symbol.id] = spot;
+    }
+
+    final created = await mgr.createMulti(annotations);
+    for (var i = 0; i < created.length; i++) {
+      final dynamic anno = created[i];
+      final String? id = (anno as dynamic).id as String?;
+      if (id != null) {
+        _annotationIdToSpot[id] = _spots[i];
+      }
     }
   }
 
@@ -196,25 +316,41 @@ class EasyCamperMapState extends State<EasyCamperMap> {
   }
 
   @override
+  void dispose() {
+    _pointAnnoManager?.deleteAll();
+    _pointAnnoManager = null;
+    _mapboxMap = null;
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // La mappa reale è disponibile su tutte le piattaforme supportate.
-    // Usiamo lo stesso widget Mapbox; il flag isMobile serve solo per UX esterna.
-    return MapboxMap(
-      accessToken: mapboxAccessToken,
-      onMapCreated: (controller) {
-        _mapController = controller;
-        _mapController!.onSymbolTapped.add((symbol) {
-          final spot = _symbolIdToSpot[symbol.id];
-          if (spot != null) {
-            widget.onSpotSelected(spot);
-          }
-        });
-      },
-      onCameraIdle: _onMapIdle,
-      initialCameraPosition: const CameraPosition(
-        target: LatLng(45.4642, 9.19),
-        zoom: 8,
+    return MapWidget(
+      key: const ValueKey('easycamper_map'),
+      cameraOptions: CameraOptions(
+        center: Point(coordinates: Position(9.19, 45.4642)),
+        zoom: 8.0,
       ),
+      styleUri: MapboxStyles.MAPBOX_STREETS,
+      onMapCreated: _onMapCreated,
+      onMapIdleListener: (_) => _onMapIdle(),
     );
+  }
+}
+
+class _PointAnnoClickListener extends OnPointAnnotationClickListener {
+  _PointAnnoClickListener(this._byId, this._onSelected);
+
+  final Map<String?, SpotMarkerData> _byId;
+  final ValueChanged<SpotMarkerData> _onSelected;
+
+  @override
+  bool onPointAnnotationClick(PointAnnotation annotation) {
+    final spot = _byId[annotation.id];
+    if (spot != null) {
+      _onSelected(spot);
+      return true;
+    }
+    return false;
   }
 }
