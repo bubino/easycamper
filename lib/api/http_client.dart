@@ -1,22 +1,51 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'package:dio/dio.dart';
+import 'package:cookie_jar/cookie_jar.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'auth_state.dart';
 
 class ApiHttpClient {
   final String baseUrl;
   final Ref ref;
-  final http.Client _client;
+  final Dio _dio;
 
   static DateTime? _refreshCooldownUntil;
 
   ApiHttpClient({
     required this.baseUrl,
     required this.ref,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+    Dio? dio,
+  }) : _dio = dio ?? Dio(BaseOptions(baseUrl: baseUrl));
+
+  static const _defaultJsonHeaders = <String, String>{
+    'Content-Type': 'application/json',
+  };
+
+  /// Must be called once to enable persistent cookie storage.
+  /// This is critical for HttpOnly refresh token cookies.
+  Future<void> ensureCookiesInitialized() async {
+    // If cookie manager is already attached, do nothing.
+    final already = _dio.interceptors.any((i) => i is CookieManager);
+    if (already) return;
+
+    final dir = await getApplicationSupportDirectory();
+    final jar = PersistCookieJar(
+      storage: FileStorage('${dir.path}/.easycamper_cookies'),
+    );
+
+    _dio.interceptors.add(CookieManager(jar));
+
+    // Reasonable defaults
+    _dio.options
+      ..connectTimeout = const Duration(seconds: 15)
+      ..receiveTimeout = const Duration(seconds: 20)
+      ..sendTimeout = const Duration(seconds: 20);
+  }
 
   bool get _isInRefreshCooldown {
     final until = _refreshCooldownUntil;
@@ -28,7 +57,7 @@ class ApiHttpClient {
     _refreshCooldownUntil = DateTime.now().add(duration);
   }
 
-  Future<http.Response> get(
+  Future<Response<String>> get(
     String path, {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
@@ -43,7 +72,7 @@ class ApiHttpClient {
     );
   }
 
-  Future<http.Response> post(
+  Future<Response<String>> post(
     String path, {
     Map<String, String>? headers,
     Object? body,
@@ -58,7 +87,7 @@ class ApiHttpClient {
     );
   }
 
-  Future<http.Response> _send(
+  Future<Response<String>> _send(
     String method,
     String path, {
     Map<String, String>? headers,
@@ -66,22 +95,28 @@ class ApiHttpClient {
     Object? body,
     bool authenticated = true,
   }) async {
-    final uri = _buildUri(path, queryParameters);
+    await ensureCookiesInitialized();
+
     final effectiveHeaders = <String, String>{
-      'Content-Type': 'application/json',
+      ..._defaultJsonHeaders,
       ...?headers,
     };
 
-    String? token;
     if (authenticated) {
       final authState = ref.read(authControllerProvider);
-      token = authState.value?.session?.accessToken;
+      final token = authState.value?.session?.accessToken;
       if (token != null && token.isNotEmpty) {
         effectiveHeaders['Authorization'] = 'Bearer $token';
       }
     }
 
-    http.Response response = await _execute(method, uri, effectiveHeaders, body);
+    Response<String> response = await _execute(
+      method,
+      path,
+      headers: effectiveHeaders,
+      queryParameters: queryParameters,
+      body: body,
+    );
 
     if (authenticated && _isAuthError(response.statusCode)) {
       final refreshed = await _tryRefreshToken();
@@ -93,7 +128,14 @@ class ApiHttpClient {
         } else {
           effectiveHeaders.remove('Authorization');
         }
-        response = await _execute(method, uri, effectiveHeaders, body);
+
+        response = await _execute(
+          method,
+          path,
+          headers: effectiveHeaders,
+          queryParameters: queryParameters,
+          body: body,
+        );
       } else {
         await ref.read(authControllerProvider.notifier).logout();
       }
@@ -102,42 +144,35 @@ class ApiHttpClient {
     return response;
   }
 
-  Uri _buildUri(String path, Map<String, dynamic>? queryParameters) {
-    final uri = Uri.parse('$baseUrl$path');
-    if (queryParameters == null || queryParameters.isEmpty) {
-      return uri;
-    }
-    return uri.replace(
-      queryParameters: {
-        ...uri.queryParameters,
-        ...queryParameters.map((k, v) => MapEntry(k, v.toString())),
-      },
-    );
-  }
-
-  Future<http.Response> _execute(
+  Future<Response<String>> _execute(
     String method,
-    Uri uri,
-    Map<String, String> headers,
+    String path, {
+    required Map<String, String> headers,
+    Map<String, dynamic>? queryParameters,
     Object? body,
-  ) async {
-    switch (method.toUpperCase()) {
-      case 'GET':
-        return _client.get(uri, headers: headers);
-      case 'POST':
-        return _client.post(uri, headers: headers, body: body);
-      case 'PUT':
-        return _client.put(uri, headers: headers, body: body);
-      case 'PATCH':
-        return _client.patch(uri, headers: headers, body: body);
-      case 'DELETE':
-        return _client.delete(uri, headers: headers, body: body);
-      default:
-        throw UnsupportedError('Metodo HTTP non supportato: $method');
+  }) async {
+    try {
+      final options = Options(
+        method: method,
+        headers: headers,
+        responseType: ResponseType.plain,
+        // We handle non-2xx ourselves.
+        validateStatus: (_) => true,
+      );
+
+      return await _dio.request<String>(
+        path,
+        data: body,
+        queryParameters: queryParameters,
+        options: options,
+      );
+    } on DioException catch (e) {
+      // Match old behavior: surface as an exception.
+      throw Exception(e.message ?? 'Errore rete');
     }
   }
 
-  bool _isAuthError(int statusCode) {
+  bool _isAuthError(int? statusCode) {
     return statusCode == 401 || statusCode == 403;
   }
 
@@ -145,6 +180,7 @@ class ApiHttpClient {
     if (_isInRefreshCooldown) {
       return false;
     }
+
     try {
       final storage = ref.read(authStorageProvider);
       final authApi = ref.read(authApiClientProvider);

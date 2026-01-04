@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api/auth_api.dart';
+import 'api/auth_state.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -16,7 +17,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
 
-  final _authApi = const AuthApiClient('http://127.0.0.1:3000');
+  // AuthApiClient now expects an ApiHttpClient; use Riverpod provider.
+  AuthApiClient get _authApi => ref.read(authApiClientProvider);
 
   Future<void> _handleRegister() async {
     final name = _nameController.text.trim();

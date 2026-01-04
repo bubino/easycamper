@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api/auth_api.dart';
+import 'api/http_client.dart';
 
 class PasswordResetScreen extends StatefulWidget {
   const PasswordResetScreen({super.key});
@@ -11,12 +13,26 @@ class PasswordResetScreen extends StatefulWidget {
 
 class _PasswordResetScreenState extends State<PasswordResetScreen> {
   final TextEditingController _emailController = TextEditingController();
-  final AuthApiClient _authApi = const AuthApiClient('http://127.0.0.1:3000');
+
+  // Use a local Riverpod container so this screen can access ApiHttpClient
+  // without requiring it to be a ConsumerWidget.
+  late final ProviderContainer _container;
+  late final AuthApiClient _authApi;
+
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _container = ProviderContainer();
+    final http = _container.read(apiHttpClientProvider);
+    _authApi = AuthApiClient(http);
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
+    _container.dispose();
     super.dispose();
   }
 
