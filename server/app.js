@@ -145,21 +145,4 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-// --- Error handler (must be last) ---
-// Ensures 500 errors return a useful JSON body and logs the stack in dev.
-app.use((err, req, res, _next) => {
-  const status = err.status || err.statusCode || 500;
-
-  // Always log server-side; critical for debugging 500.
-  // eslint-disable-next-line no-console
-  console.error('Unhandled error:', err);
-
-  const isDev = process.env.NODE_ENV === 'development';
-  res.status(status).json({
-    error: err.message || 'Internal Server Error',
-    status,
-    ...(isDev ? { stack: err.stack } : {}),
-  });
-});
-
 module.exports = app;

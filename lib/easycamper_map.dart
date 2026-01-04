@@ -51,51 +51,9 @@ class EasyCamperMapState extends State<EasyCamperMap> {
   List<SpotMarkerData> _spots = [];
   final Map<String?, SpotMarkerData> _annotationIdToSpot = {};
 
+  bool get _isMobile => widget.isMobile;
+
   int _refreshToken = 0;
-
-  final Map<String, Uint8List?> _markerBytesByAsset = {};
-
-  String? _lastRenderedSignature;
-
-  // Only show/fetch POIs when user is sufficiently zoomed in.
-  // Prevents loading hundreds/thousands of items at startup.
-  static const double _minZoomToFetchPois = 9.5;
-
-  bool _refreshInFlight = false;
-
-  Future<Uint8List?> _loadMarkerBytes(String assetPath) async {
-    if (_markerBytesByAsset.containsKey(assetPath)) {
-      return _markerBytesByAsset[assetPath];
-    }
-    try {
-      final data = await rootBundle.load(assetPath);
-      final bytes = data.buffer.asUint8List();
-      _markerBytesByAsset[assetPath] = bytes;
-      return bytes;
-    } catch (_) {
-      _markerBytesByAsset[assetPath] = null;
-      return null;
-    }
-  }
-
-  String _assetForSpotType(String? type) {
-    switch (type) {
-      case 'campeggio':
-        return 'assets/icons/markers/icon_c.png';
-      case 'agricampeggio':
-        return 'assets/icons/markers/icon_ar.png';
-      case 'area_sosta':
-      default:
-        return 'assets/icons/markers/icon_p.png';
-    }
-  }
-
-  String _spotsSignature(List<SpotMarkerData> spots) {
-    // Stable signature to detect no-op refreshes
-    return spots
-        .map((s) => '${s.id}:${s.latitude.toStringAsFixed(5)},${s.longitude.toStringAsFixed(5)}')
-        .join('|');
-  }
 
   // Permette alla schermata esterna di recentrare la camera sulla posizione passata
   Future<void> centerOn(double lat, double lng, {double zoom = 12}) async {
@@ -111,8 +69,6 @@ class EasyCamperMapState extends State<EasyCamperMap> {
   }
 
   Future<void> reload() async {
-    // Force next refresh to re-render even if signature matches
-    _lastRenderedSignature = null;
     _onMapIdle();
   }
 
@@ -140,7 +96,7 @@ class EasyCamperMapState extends State<EasyCamperMap> {
   void _onMapIdle() {
     // debounce/coalescing: se arrivano più idle ravvicinati, eseguiamo solo l'ultimo
     final token = ++_refreshToken;
-    Future<void>.delayed(const Duration(milliseconds: 450)).then((_) {
+    Future<void>.delayed(const Duration(milliseconds: 250)).then((_) {
       if (!mounted) return;
       if (token != _refreshToken) return;
       _refreshSpotsForCurrentCamera();
@@ -151,55 +107,19 @@ class EasyCamperMapState extends State<EasyCamperMap> {
     final map = _mapboxMap;
     if (map == null) return;
 
-    // Prevent overlapping refreshes (e.g. many idle events in a short time).
-    if (_refreshInFlight) return;
-    _refreshInFlight = true;
-
-    final token = _refreshToken;
-
     _setLoading(true);
     try {
       final state = await map.getCameraState();
 
-      final zoom = state.zoom;
-      if (zoom < _minZoomToFetchPois) {
-        // Too zoomed out: clear markers to avoid clutter/lag.
-        if (!mounted) return;
-        if (token != _refreshToken) return;
-
-        if (_spots.isNotEmpty) {
-          setState(() {
-            _spots = [];
-          });
-          await _renderSpotsOnMap();
-          _lastRenderedSignature = '';
-          widget.onSpotsChanged(const []);
-        }
-        return;
-      }
-
-      // bbox reale della viewport (normalizzato)
-      final bounds =
-          await map.coordinateBoundsForCamera(state.toCameraOptions());
+      // bbox reale della viewport
+      final bounds = await map.coordinateBoundsForCamera(state.toCameraOptions());
       final sw = bounds.southwest;
       final ne = bounds.northeast;
 
-      double latMin = sw.coordinates.lat.toDouble();
-      double lngMin = sw.coordinates.lng.toDouble();
-      double latMax = ne.coordinates.lat.toDouble();
-      double lngMax = ne.coordinates.lng.toDouble();
-
-      // Normalize in case values are swapped
-      if (latMin > latMax) {
-        final tmp = latMin;
-        latMin = latMax;
-        latMax = tmp;
-      }
-      if (lngMin > lngMax) {
-        final tmp = lngMin;
-        lngMin = lngMax;
-        lngMax = tmp;
-      }
+      final latMin = sw.coordinates.lat.toDouble();
+      final lngMin = sw.coordinates.lng.toDouble();
+      final latMax = ne.coordinates.lat.toDouble();
+      final lngMax = ne.coordinates.lng.toDouble();
 
       final filters = widget.filtersBuilder();
 
@@ -214,35 +134,19 @@ class EasyCamperMapState extends State<EasyCamperMap> {
           services: filters.services,
           minRating: filters.minRating,
         );
-      } catch (e) {
-        // ignore: avoid_print
-        print('SPOTS DEBUG: backend fetch failed: $e');
+      } catch (_) {
         spots = await _loadMockSpotsFromBundle(filters);
       }
 
-      // ignore: avoid_print
-      print(
-          'SPOTS DEBUG: bbox=[$latMin,$lngMin,$latMax,$lngMax] -> ${spots.length} spots');
-
       if (!mounted) return;
-      if (token != _refreshToken) return;
-
-      final sig = _spotsSignature(spots);
-      if (_lastRenderedSignature == sig) {
-        widget.onSpotsChanged(spots);
-        return;
-      }
-
       setState(() {
         _spots = spots;
       });
 
       await _renderSpotsOnMap();
-      _lastRenderedSignature = sig;
       widget.onSpotsChanged(spots);
     } finally {
       _setLoading(false);
-      _refreshInFlight = false;
     }
   }
 
@@ -298,16 +202,11 @@ class EasyCamperMapState extends State<EasyCamperMap> {
 
     final annotations = <PointAnnotationOptions>[];
     for (final spot in _spots) {
-      final asset = _assetForSpotType(spot.type);
-      final bytes = await _loadMarkerBytes(asset) ??
-          await _loadMarkerBytes('assets/icons/markers/icon_p.png');
-
       annotations.add(
         PointAnnotationOptions(
           geometry: Point(coordinates: Position(spot.longitude, spot.latitude)),
-          image: bytes,
-          // Bigger markers to make tapping easier on real iPhone.
-          iconSize: 2.6,
+          textField: spot.name,
+          textOffset: [0.0, 1.2],
         ),
       );
     }

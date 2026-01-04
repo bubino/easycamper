@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth_api.dart';
 import 'auth_storage.dart';
 import 'auth_result.dart';
-import 'http_client.dart';
 
 // Base URL per il backend di autenticazione.
 // - Per simulatore iOS / emulatore Android si può usare http://127.0.0.1:3000
@@ -61,10 +60,8 @@ final authStorageProvider = Provider<AuthStorage>((ref) {
 });
 
 final authApiClientProvider = Provider<AuthApiClient>((ref) {
-  // AuthApiClient now uses ApiHttpClient so that HttpOnly cookies (refresh token)
-  // are persisted and automatically sent.
-  final httpClient = ref.read(apiHttpClientProvider);
-  return AuthApiClient(httpClient);
+  // TODO: prendi baseUrl da configurazione/env
+  return const AuthApiClient(kAuthBaseUrl);
 });
 
 class AuthController extends AsyncNotifier<AuthState> {

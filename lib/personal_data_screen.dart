@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api/auth_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'api/http_client.dart';
 
 class PersonalDataScreen extends ConsumerStatefulWidget {
   final String? initialEmail;
@@ -61,8 +60,7 @@ class _PersonalDataScreenState extends ConsumerState<PersonalDataScreen> {
 
     setState(() => _changingEmail = true);
     try {
-      final baseUrl = ref.read(apiHttpClientProvider).baseUrl;
-      final uri = Uri.parse('$baseUrl/users/$userId/change-email');
+      final uri = Uri.parse('http://127.0.0.1:3000/users/$userId/change-email');
       final res = await http.post(
         uri,
         headers: {
@@ -93,11 +91,6 @@ class _PersonalDataScreenState extends ConsumerState<PersonalDataScreen> {
           SnackBar(content: Text(msg)),
         );
       }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore di rete: $e')),
-      );
     } finally {
       if (mounted) {
         setState(() => _changingEmail = false);
@@ -208,20 +201,9 @@ class _PersonalDataScreenState extends ConsumerState<PersonalDataScreen> {
                 TextField(
                   controller: _newEmailController,
                   keyboardType: TextInputType.emailAddress,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Nuova email',
-                    labelStyle: const TextStyle(color: Colors.white70),
-                    filled: true,
-                    fillColor: const Color(0xFF0d221a),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFF123426)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: primary),
-                    ),
+                    border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 8),

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api/auth_api.dart';
-import 'api/http_client.dart';
 
 class PasswordResetScreen extends StatefulWidget {
   const PasswordResetScreen({super.key});
@@ -13,26 +11,12 @@ class PasswordResetScreen extends StatefulWidget {
 
 class _PasswordResetScreenState extends State<PasswordResetScreen> {
   final TextEditingController _emailController = TextEditingController();
-
-  // Use a local Riverpod container so this screen can access ApiHttpClient
-  // without requiring it to be a ConsumerWidget.
-  late final ProviderContainer _container;
-  late final AuthApiClient _authApi;
-
+  final AuthApiClient _authApi = const AuthApiClient('http://127.0.0.1:3000');
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _container = ProviderContainer();
-    final http = _container.read(apiHttpClientProvider);
-    _authApi = AuthApiClient(http);
-  }
 
   @override
   void dispose() {
     _emailController.dispose();
-    _container.dispose();
     super.dispose();
   }
 
@@ -82,14 +66,12 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const darkBg = Color(0xFF071814);
-    const primary = Color(0xFF1b7f6b);
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: darkBg,
+      backgroundColor: const Color(0xFF071814),
       appBar: AppBar(
-        backgroundColor: darkBg,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
         title: const Text('Reimposta password'),
@@ -124,7 +106,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         labelText: 'Email',
-                        labelStyle: const TextStyle(color: Colors.white70),
+                        labelStyle: TextStyle(color: Colors.grey[400]),
                         prefixIcon: Icon(
                           Icons.email_outlined,
                           color: Colors.grey[400],
@@ -136,12 +118,14 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                           vertical: 14,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Color(0xFF123426)),
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide:
+                              const BorderSide(color: Colors.transparent),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: primary),
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide:
+                              const BorderSide(color: Color(0xFF1b7f6b)),
                         ),
                       ),
                     ),
@@ -155,7 +139,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primary,
+                    backgroundColor: const Color(0xFF1b7f6b),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import 'dart:typed_data';
 
 import 'api/spot_dto.dart';
 
@@ -19,62 +17,9 @@ class NavigationOptionsScreen extends StatefulWidget {
 class _NavigationOptionsScreenState extends State<NavigationOptionsScreen> {
   CamperRouteType? _selected;
   MapboxMap? _previewMap;
-  PointAnnotationManager? _annoMgr;
 
-  Future<void> _ensureManagers() async {
-    final map = _previewMap;
-    if (map == null) return;
-    _annoMgr ??= await map.annotations.createPointAnnotationManager();
-  }
-
-  Future<Uint8List?> _loadMarkerBytes(String assetPath) async {
-    try {
-      final data = await rootBundle.load(assetPath);
-      return data.buffer.asUint8List();
-    } catch (_) {
-      return null;
-    }
-  }
-
-  String _assetForSpotType(String type) {
-    switch (type) {
-      case 'campeggio':
-        return 'assets/icons/markers/icon_c.png';
-      case 'agricampeggio':
-        return 'assets/icons/markers/icon_ar.png';
-      case 'area_sosta':
-      default:
-        return 'assets/icons/markers/icon_p.png';
-    }
-  }
-
-  Future<void> _renderDestinationMarker() async {
-    await _ensureManagers();
-    final mgr = _annoMgr;
-    if (mgr == null) return;
-    await mgr.deleteAll();
-
-    final asset = _assetForSpotType(widget.spot.type);
-    final bytes = await _loadMarkerBytes(asset) ??
-        await _loadMarkerBytes('assets/icons/markers/icon_p.png');
-
-    await mgr.create(
-      PointAnnotationOptions(
-        geometry: Point(
-          coordinates: Position(widget.spot.lng, widget.spot.lat),
-        ),
-        image: bytes,
-        iconSize: 1.6,
-      ),
-    );
-  }
-
-  void _onMapCreated(MapboxMap map) async {
+  void _onMapCreated(MapboxMap map) {
     _previewMap = map;
-
-    // Wait a tick to ensure style is applied before creating managers/annotations.
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    await _renderDestinationMarker();
 
     _previewMap!.setCamera(
       CameraOptions(
@@ -82,23 +27,6 @@ class _NavigationOptionsScreenState extends State<NavigationOptionsScreen> {
         zoom: 11.0,
       ),
     );
-  }
-
-  Future<void> _renderRoutePreviewIfPossible() async {
-    final map = _previewMap;
-    if (map == null) return;
-
-    // Placeholder: for now we don't call routing APIs.
-    // In the future we’ll call the routing backend and draw the returned polyline.
-    // Here we just keep the destination marker visible.
-    await _renderDestinationMarker();
-  }
-
-  @override
-  void dispose() {
-    _annoMgr?.deleteAll();
-    _annoMgr = null;
-    super.dispose();
   }
 
   @override
@@ -214,10 +142,7 @@ class _NavigationOptionsScreenState extends State<NavigationOptionsScreen> {
     final selected = _selected == type;
 
     return InkWell(
-      onTap: () async {
-        setState(() => _selected = type);
-        await _renderRoutePreviewIfPossible();
-      },
+      onTap: () => setState(() => _selected = type),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(12),

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'login_screen.dart';
 import 'register_screen.dart';
@@ -13,13 +12,9 @@ import 'password_reset_sent_screen.dart';
 import 'map_screen.dart';
 import 'api/auth_state.dart';
 import 'onboarding_post_registration.dart';
-import 'mapbox_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Mapbox token: va impostato prima di creare qualsiasi MapWidget.
-  MapboxOptions.setAccessToken(mapboxAccessToken);
 
   // Inizializza Firebase solo dove lo useremo davvero (mobile/web), non su macOS per ora.
   if (!Platform.isMacOS) {

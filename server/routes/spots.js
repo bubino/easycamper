@@ -72,15 +72,7 @@ router.get('/', async (req, res, next) => {
 // GET /spots/:id - dettaglio
 router.get('/:id', async (req, res, next) => {
   try {
-    const id = String(req.params.id || '').trim();
-    // UUID v4/v1 generic check
-    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRe.test(id)) {
-      // Avoid DB errors like "invalid input syntax for type uuid"
-      return res.status(400).json({ error: 'ID spot non valido' });
-    }
-
-    const spot = await Spot.findByPk(id);
+    const spot = await Spot.findByPk(req.params.id);
     if (!spot) {
       return res.status(404).json({ error: 'Spot non trovato' });
     }

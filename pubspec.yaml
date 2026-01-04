@@ -27,12 +27,6 @@ dependencies:
   mapbox_maps_flutter: ^2.0.0
   http: ^1.6.0
 
-  # Networking (cookie-based auth)
-  dio: ^5.7.0
-  cookie_jar: ^4.0.8
-  dio_cookie_manager: ^3.1.1
-  path_provider: ^2.1.4
-
   # Immagini
   image_picker: ^1.1.2
 
@@ -61,9 +55,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env
     - mock_data/spot.json
     - assets/data/brands.json
     - assets/logos/
     - assets/logos/brands/
-    - assets/icons/markers/

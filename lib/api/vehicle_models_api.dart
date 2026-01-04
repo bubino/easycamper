@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// DTO per i modelli di veicolo restituiti da /api/vehicle-models
 class VehicleModelDto {
@@ -56,11 +55,7 @@ class VehicleModelDto {
 class VehicleModelsApi {
   VehicleModelsApi({http.Client? client, String? baseUrl})
       : _client = client ?? http.Client(),
-        _baseUrl = baseUrl ??
-            ((dotenv.env['API_BASE_URL'] != null &&
-                    dotenv.env['API_BASE_URL']!.trim().isNotEmpty)
-                ? dotenv.env['API_BASE_URL']!.trim()
-                : 'http://127.0.0.1:3000');
+        _baseUrl = baseUrl ?? 'http://127.0.0.1:3000';
 
   final http.Client _client;
   final String _baseUrl;

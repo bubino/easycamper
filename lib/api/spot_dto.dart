@@ -22,35 +22,20 @@ class SpotDto {
   });
 
   factory SpotDto.fromJson(Map<String, dynamic> json) {
-    final lat = (json['latitude'] ?? json['lat']) as num?;
-    final lng = (json['longitude'] ?? json['lng']) as num?;
-
-    // Backend services is an object map, mock is a list
-    final servicesRaw = json['services'];
-    final services = <String>[];
-    if (servicesRaw is List) {
-      services.addAll(servicesRaw.map((e) => e.toString()));
-    } else if (servicesRaw is Map) {
-      servicesRaw.forEach((k, v) {
-        if (v == true) services.add(k.toString());
-      });
-    }
-
-    final photosRaw = json['photos'];
-    final photos = (photosRaw is List)
-        ? photosRaw.map((e) => e.toString()).toList()
-        : const <String>[];
-
     return SpotDto(
-      id: json['id'].toString(),
-      name: (json['name'] as String?) ?? '',
-      lat: (lat ?? 0).toDouble(),
-      lng: (lng ?? 0).toDouble(),
-      type: (json['type'] as String?) ?? 'area_sosta',
-      description: (json['description'] ?? json['shortDescription'] ?? '') as String,
-      services: services,
-      rating: ((json['ratingAverage'] ?? json['rating']) as num?)?.toDouble() ?? 0.0,
-      photos: photos,
+      id: json['id'] as String,
+      name: json['name'] as String,
+      lat: (json['lat'] as num).toDouble(),
+      lng: (json['lng'] as num).toDouble(),
+      type: json['type'] as String,
+      description: json['description'] as String? ?? '',
+      services: (json['services'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .toList(),
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      photos: (json['photos'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .toList(),
     );
   }
 

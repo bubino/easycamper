@@ -35,8 +35,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .login(email: email, password: password);
       if (!mounted) return;
 
-      // Non forzare /home qui: lasciamo che il root decider gestisca onboarding e rotta corretta.
-      context.go('/');
+      context.go('/home');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -47,33 +46,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  Future<void> _handleLoginWithGoogle() async {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Login con Google sarà disponibile in una prossima versione.'),
-      ),
-    );
-  }
-
-  Future<void> _handleLoginWithApple() async {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Login con Apple sarà disponibile in una prossima versione.'),
-      ),
-    );
-  }
-
-  void _handleLoginWithFacebook() {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Login con Facebook non ancora implementato.'),
-      ),
-    );
   }
 
   @override
@@ -233,72 +205,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const Center(
-                      child: Text(
-                        'Oppure accedi con',
-                        style: TextStyle(
-                          color: Color(0xFFe0e0e0),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _SocialButton(
-                      label: 'Accedi con Google',
-                      onPressed: _isLoading ? null : _handleLoginWithGoogle,
-                    ),
-                    const SizedBox(height: 10),
-                    _SocialButton(
-                      label: 'Accedi con Apple',
-                      onPressed: _isLoading ? null : _handleLoginWithApple,
-                    ),
-                    const SizedBox(height: 10),
-                    _SocialButton(
-                      label: 'Accedi con Facebook',
-                      onPressed: _isLoading ? null : _handleLoginWithFacebook,
-                    ),
                   ],
                 ),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SocialButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
-
-  const _SocialButton({
-    required this.label,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          side: BorderSide.none,
-        ),
-        onPressed: onPressed,
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13),
-        ),
       ),
     );
   }
