@@ -70,3 +70,6 @@ assets/data/nord.osm-gh.test/map.test.pbf
 assets/data/nord.osm-gh.test/graph-cache/edges
 *.pbf
 **/graph-cache/
+
+.env
+ios/Runner.xcworkspace/
