@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'api/auth_api.dart';
 import 'api/auth_state.dart';
 import 'api/auth_state.dart' show authApiClientProvider, authControllerProvider;
@@ -19,6 +20,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
+
+  bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 
   AuthApiClient get _authApi => ref.read(authApiClientProvider);
 
@@ -92,7 +95,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Registrazione con Apple sarà disponibile in una prossima versione.'),
+        content: Text(
+          'Funzione disponibile dopo enrollment Apple Developer Program.',
+        ),
       ),
     );
   }
@@ -170,11 +175,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 onPressed: _handleRegisterWithGoogle,
               ),
               const SizedBox(height: 10),
-              _SocialButton(
-                label: 'Registrati con Apple',
-                onPressed: _handleRegisterWithApple,
-              ),
-              const SizedBox(height: 10),
+              if (_isIOS) ...[
+                _SocialButton(
+                  label: 'Registrati con Apple',
+                  onPressed: _handleRegisterWithApple,
+                ),
+                const SizedBox(height: 10),
+              ],
               _SocialButton(
                 label: 'Registrati con Facebook',
                 onPressed: () {

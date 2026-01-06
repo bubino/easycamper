@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'register_screen.dart';
 import 'password_reset_screen.dart';
 import 'api/auth_state.dart';
@@ -17,6 +18,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+
+  bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim().toLowerCase();
@@ -83,6 +86,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _handleAppleLogin() async {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Funzione disponibile dopo enrollment Apple Developer Program.',
+        ),
+      ),
+    );
   }
 
   @override
@@ -239,7 +253,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         label: const Text('Continua con Google'),
                       ),
                     ),
-                    const SizedBox(height: 12),
+
+                    if (_isIOS) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            side: const BorderSide(color: Colors.white24),
+                          ),
+                          onPressed: _isLoading ? null : _handleAppleLogin,
+                          icon: const Icon(Icons.apple, size: 20),
+                          label: const Text('Continua con Apple'),
+                        ),
+                      ),
+                    ],
+
+                     const SizedBox(height: 12),
                     Align(
                       alignment: Alignment.center,
                       child: TextButton(
