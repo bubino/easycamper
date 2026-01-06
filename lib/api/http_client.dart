@@ -166,9 +166,15 @@ class ApiHttpClient {
 }
 
 final apiHttpClientProvider = Provider<ApiHttpClient>((ref) {
-  final envBaseUrl = dotenv.env['API_BASE_URL'];
+  String? envBaseUrl;
+  try {
+    envBaseUrl = dotenv.env['API_BASE_URL'];
+  } catch (_) {
+    envBaseUrl = null;
+  }
+
   final baseUrl = (envBaseUrl != null && envBaseUrl.trim().isNotEmpty)
       ? envBaseUrl.trim()
-      : 'http://127.0.0.1:3000';
+      : kAuthBaseUrl;
   return ApiHttpClient(baseUrl: baseUrl, ref: ref);
 });

@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+// Importo la stessa base URL di default usata dall'autenticazione (device fisico).
+import 'auth_state.dart';
+
 /// DTO per i modelli di veicolo restituiti da /api/vehicle-models
 class VehicleModelDto {
   final String id;
@@ -56,11 +59,20 @@ class VehicleModelDto {
 class VehicleModelsApi {
   VehicleModelsApi({http.Client? client, String? baseUrl})
       : _client = client ?? http.Client(),
-        _baseUrl = baseUrl ??
-            ((dotenv.env['API_BASE_URL'] != null &&
-                    dotenv.env['API_BASE_URL']!.trim().isNotEmpty)
-                ? dotenv.env['API_BASE_URL']!.trim()
-                : 'http://127.0.0.1:3000');
+        _baseUrl = baseUrl ?? _resolveBaseUrlFromEnv();
+
+  static String _resolveBaseUrlFromEnv() {
+    try {
+      final v = dotenv.env['API_BASE_URL'];
+      if (v != null && v.trim().isNotEmpty) return v.trim();
+    } catch (_) {
+      // ignore
+    }
+
+    // Su device fisico iOS/Android 127.0.0.1 punta al device, non al Mac.
+    // Allineiamo al backend usato per auth.
+    return kAuthBaseUrl;
+  }
 
   final http.Client _client;
   final String _baseUrl;

@@ -55,7 +55,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env
+    # NOTE: Non includere .env come asset: se manca, iOS/Android falliscono la build (bundle assets).
+    # Se ti serve usare flutter_dotenv, crea un file .env reale (non committare segreti) e aggiungilo qui.
+    # - .env
     - mock_data/spot.json
     - assets/data/brands.json
     - assets/logos/

@@ -98,3 +98,10 @@ android/local.properties
 
 # Logs
 *.log
+
+# Firebase iOS config (non committare: contiene chiavi)
+ios/Runner/GoogleService-Info.plist
+ios/Runner/GoogleService-Info.*.plist
+
+# (opzionale) template/placeholder
+ios/Runner/GoogleService-Info.plist.example

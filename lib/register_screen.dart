@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'api/auth_api.dart';
+import 'api/auth_state.dart';
+import 'api/auth_state.dart' show authApiClientProvider, authControllerProvider;
+import 'package:go_router/go_router.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -16,7 +20,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
 
-  final _authApi = const AuthApiClient('http://127.0.0.1:3000');
+  AuthApiClient get _authApi => ref.read(authApiClientProvider);
 
   Future<void> _handleRegister() async {
     final name = _nameController.text.trim();
@@ -55,35 +59,42 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _handleRegisterWithGoogle() async {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Registrazione con Google sarà disponibile solo su iOS/Android in una prossima versione.'),
-      ),
-    );
+    if (_isLoading) return;
 
-    // In futuro, quando abilitiamo davvero il social su mobile:
-    // final idToken = await _getGoogleIdToken(); // condiviso con LoginScreen
-    // if (idToken == null) return;
-    // await ref.read(authControllerProvider.notifier).loginWithGoogle(idToken);
-    // if (!mounted) return;
-    // context.go('/home');
+    setState(() => _isLoading = true);
+    try {
+      final googleSignIn = GoogleSignIn(scopes: const ['email', 'profile']);
+      final account = await googleSignIn.signIn();
+      if (account == null) return; // cancel
+
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Impossibile ottenere idToken Google');
+      }
+
+      await ref.read(authControllerProvider.notifier).loginWithGoogle(idToken);
+      if (!mounted) return;
+
+      // Lascia decidere al RootDecider (onboarding vs home)
+      context.go('/');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore registrazione Google: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _handleRegisterWithApple() async {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Registrazione con Apple sarà disponibile solo su iOS/Android in una prossima versione.'),
+        content: Text('Registrazione con Apple sarà disponibile in una prossima versione.'),
       ),
     );
-
-    // In futuro:
-    // final idToken = await _getAppleIdToken();
-    // if (idToken == null) return;
-    // await ref.read(authControllerProvider.notifier).loginWithApple(idToken);
-    // if (!mounted) return;
-    // context.go('/home');
   }
 
   @override

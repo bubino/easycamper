@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 import 'login_screen.dart';
 import 'register_screen.dart';
@@ -22,8 +23,17 @@ Future<void> main() async {
   MapboxOptions.setAccessToken(mapboxAccessToken);
 
   // Inizializza Firebase solo dove lo useremo davvero (mobile/web), non su macOS per ora.
+  // Se manca la configurazione (es. GoogleService-Info.plist su iOS), evitiamo il crash e
+  // lasciamo comunque partire l'app (mostrando un errore chiaro via UI).
+  Object? firebaseInitError;
   if (!Platform.isMacOS) {
-    await Firebase.initializeApp();
+    try {
+      await Firebase.initializeApp();
+    } catch (e, st) {
+      firebaseInitError = e;
+      debugPrint('ERROR: Firebase.initializeApp fallita: $e');
+      debugPrintStack(stackTrace: st);
+    }
   }
 
   // Prova a caricare .env ma non bloccare l'app se il file manca
@@ -35,8 +45,8 @@ Future<void> main() async {
   }
 
   runApp(
-    const ProviderScope(
-      child: EasyCamperApp(),
+    ProviderScope(
+      child: EasyCamperApp(firebaseInitError: firebaseInitError),
     ),
   );
 }
@@ -98,10 +108,38 @@ class IsLoggedInNotifier extends Notifier<bool> {
 final isLoggedInProvider = NotifierProvider<IsLoggedInNotifier, bool>(IsLoggedInNotifier.new);
 
 class EasyCamperApp extends ConsumerWidget {
-  const EasyCamperApp({super.key});
+  final Object? firebaseInitError;
+  const EasyCamperApp({super.key, this.firebaseInitError});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (firebaseInitError != null) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          appBar: AppBar(title: const Text('EasyCamper')),
+          body: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Firebase non inizializzato',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  "Su iOS questo succede quasi sempre quando manca il file 'GoogleService-Info.plist' nel target Runner.",
+                ),
+                const SizedBox(height: 12),
+                Text('Dettagli: $firebaseInitError'),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return MaterialApp.router(
       title: 'EasyCamper',
       debugShowCheckedModeBanner: false,

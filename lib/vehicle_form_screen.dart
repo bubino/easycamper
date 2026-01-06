@@ -23,8 +23,6 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
   final _weightCtrl = TextEditingController();
   final _widthCtrl = TextEditingController(); // nuova larghezza in metri
 
-  final _modelsApi = VehicleModelsApi();
-
   @override
   void initState() {
     super.initState();
@@ -61,6 +59,13 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
       appBar: AppBar(
         backgroundColor: darkBg,
         elevation: 0,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
         title: Text(isEditing ? 'Modifica veicolo' : 'Nuovo veicolo'),
       ),
       body: SafeArea(

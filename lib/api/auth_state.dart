@@ -61,7 +61,14 @@ final authStorageProvider = Provider<AuthStorage>((ref) {
 });
 
 final authApiClientProvider = Provider<AuthApiClient>((ref) {
-  final envBaseUrl = dotenv.env['API_BASE_URL'];
+  String? envBaseUrl;
+  try {
+    // Può lanciare NotInitializedError se dotenv non è stato inizializzato.
+    envBaseUrl = dotenv.env['API_BASE_URL'];
+  } catch (_) {
+    envBaseUrl = null;
+  }
+
   final baseUrl = (envBaseUrl != null && envBaseUrl.trim().isNotEmpty)
       ? envBaseUrl.trim()
       : kAuthBaseUrl;

@@ -374,7 +374,14 @@ router.post('/google', socialLimiter, async (req, res) => {
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         });
         res.cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production' });
-        return res.status(200).json({ message: 'Login Google riuscito', userId: user.id, token });
+        return res.status(200).json({
+          message: 'Login Google riuscito',
+          userId: user.id,
+          email: user.email,
+          username: user.username,
+          token,
+          accessToken: token,
+        });
       } catch (err) {
         // Log errore per debug race
         console.error('Errore Google test-case:', err);
@@ -395,7 +402,14 @@ router.post('/google', socialLimiter, async (req, res) => {
               expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
             });
             res.cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production' });
-            return res.status(200).json({ message: 'Login Google riuscito', userId: user.id, token });
+            return res.status(200).json({
+              message: 'Login Google riuscito',
+              userId: user.id,
+              email: user.email,
+              username: user.username,
+              token,
+              accessToken: token,
+            });
           } else {
             // Se non trova l'utente, restituisci errore 400
             return res.status(400).json({ error: 'Errore login Google.' });
@@ -431,7 +445,14 @@ router.post('/google', socialLimiter, async (req, res) => {
         });
       }
       const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '15m' });
-      return res.status(200).json({ userId: user.id, token });
+      return res.status(200).json({
+        message: 'Login Google riuscito',
+        userId: user.id,
+        email: user.email,
+        username: user.username,
+        token,
+        accessToken: token,
+      });
     }
     // handle race-token in tests
     if (idToken === 'race-token') {
@@ -445,13 +466,27 @@ router.post('/google', socialLimiter, async (req, res) => {
           emailVerified: true
         });
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '15m' });
-        return res.status(200).json({ userId: user.id, token });
+        return res.status(200).json({
+          message: 'Login Google riuscito',
+          userId: user.id,
+          email: user.email,
+          username: user.username,
+          token,
+          accessToken: token,
+        });
       } catch (err) {
         try {
           user = await User.findOne({ where: { email: 'race@example.com' } });
           if (user) {
             const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '15m' });
-            return res.status(200).json({ userId: user.id, token });
+            return res.status(200).json({
+              message: 'Login Google riuscito',
+              userId: user.id,
+              email: user.email,
+              username: user.username,
+              token,
+              accessToken: token,
+            });
           }
         } catch (e) {}
         return res.status(400).json({ error: 'Email Google non trovata.' });
@@ -533,7 +568,14 @@ router.post('/google', socialLimiter, async (req, res) => {
       createdAt: new Date()
     });
     res.cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production' });
-    return res.status(200).json({ message: 'Login Google riuscito', userId: user.id, token });
+    return res.status(200).json({
+      message: 'Login Google riuscito',
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+      token,
+      accessToken: token,
+    });
   } catch (err) {
     console.error('Errore Google (catch route /google):', err);
     await AuditLog.create({
@@ -555,7 +597,14 @@ router.post('/google', socialLimiter, async (req, res) => {
           const user = await User.findOne({ where: { email: payload.email } });
           if (user) {
             const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '15m' });
-            return res.status(200).json({ userId: user.id, token });
+            return res.status(200).json({
+              message: 'Login Google riuscito',
+              userId: user.id,
+              email: user.email,
+              username: user.username,
+              token,
+              accessToken: token,
+            });
           }
         }
       } catch (findErr) {
@@ -619,7 +668,14 @@ router.post('/facebook', socialLimiter, async (req, res) => {
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         });
         res.cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production' });
-        return res.status(200).json({ message: 'Login Facebook riuscito', userId: user.id, token });
+        return res.status(200).json({
+          message: 'Login Facebook riuscito',
+          userId: user.id,
+          email: user.email,
+          username: user.username,
+          token,
+          accessToken: token,
+        });
       } catch (err) {
         if (err.message && /network|ENOTFOUND|raggiungibile/i.test(err.message)) {
           return res.status(502).json({ error: 'Facebook non raggiungibile.' });
@@ -651,7 +707,14 @@ router.post('/facebook', socialLimiter, async (req, res) => {
       }
       testMap['googleuser@example.com'] = user.id;
       const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '15m' });
-      return res.status(200).json({ userId: user.id, token });
+      return res.status(200).json({
+        message: 'Login Facebook riuscito',
+        userId: user.id,
+        email: user.email,
+        username: user.username,
+        token,
+        accessToken: token,
+      });
     }
     // 4. Race condition login social simultanei con stessa email
     if (accessToken === 'fb-test-case-4') {
@@ -664,7 +727,14 @@ router.post('/facebook', socialLimiter, async (req, res) => {
         });
         testMap['race@example.com'] = user.id;
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '15m' });
-        return res.status(200).json({ userId: user.id, token });
+        return res.status(200).json({
+          message: 'Login Facebook riuscito',
+          userId: user.id,
+          email: user.email,
+          username: user.username,
+          token,
+          accessToken: token,
+        });
       } catch (err) {
         // Log errore per debug race
         console.error('Errore Facebook test-case-4:', err);
@@ -674,7 +744,14 @@ router.post('/facebook', socialLimiter, async (req, res) => {
           if (user) {
             testMap['race@example.com'] = user.id;
             const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '15m' });
-            return res.status(200).json({ userId: user.id, token });
+            return res.status(200).json({
+              message: 'Login Facebook riuscito',
+              userId: user.id,
+              email: user.email,
+              username: user.username,
+              token,
+              accessToken: token,
+            });
           }
         } catch (findErr) {
           console.error('Errore nel recupero utente dopo race:', findErr);
@@ -693,7 +770,14 @@ router.post('/facebook', socialLimiter, async (req, res) => {
       });
       testMap['noname@example.com'] = user.id;
       const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '15m' });
-      return res.status(200).json({ userId: user.id, token });
+      return res.status(200).json({
+        message: 'Login Facebook riuscito',
+        userId: user.id,
+        email: user.email,
+        username: user.username,
+        token,
+        accessToken: token,
+      });
     }
     // 6. Token non valido
     if (accessToken === 'invalid-token') {
@@ -708,7 +792,14 @@ router.post('/facebook', socialLimiter, async (req, res) => {
     });
     testMap['classic@example.com'] = user.id;
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret', { expiresIn: '15m' });
-    return res.status(200).json({ message: 'Login Facebook riuscito', userId: user.id, token });
+    return res.status(200).json({
+      message: 'Login Facebook riuscito',
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+      token,
+      accessToken: token,
+    });
   }
   try {
     let fbData;
@@ -830,7 +921,14 @@ router.post('/facebook', socialLimiter, async (req, res) => {
       createdAt: new Date()
     });
     res.cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production' });
-    res.status(200).json({ message: 'Login Facebook riuscito', userId: user.id, token });
+    res.status(200).json({
+      message: 'Login Facebook riuscito',
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+      token,
+      accessToken: token,
+    });
   } catch (err) {
     await AuditLog.create({
       userId: null,
@@ -884,7 +982,14 @@ router.post('/apple', socialLimiter, async (req, res) => {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       });
       res.cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production' });
-      return res.status(200).json({ message: 'Login Apple riuscito', userId: user.id, token });
+      return res.status(200).json({
+        message: 'Login Apple riuscito',
+        userId: user.id,
+        email: user.email,
+        username: user.username,
+        token,
+        accessToken: token,
+      });
     }
     // Caso: token scaduto/non valido
     if (idToken === 'expired-token' || idToken === 'invalid-token') {
@@ -968,7 +1073,14 @@ router.post('/apple', socialLimiter, async (req, res) => {
       createdAt: new Date()
     });
     res.cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production' });
-    res.status(200).json({ message: 'Login Apple riuscito', userId: user.id, token });
+    res.status(200).json({
+      message: 'Login Apple riuscito',
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+      token,
+      accessToken: token,
+    });
   } catch (err) {
     await AuditLog.create({
       userId: null,
