@@ -24,8 +24,23 @@ class SpotMarker extends StatelessWidget {
         return const Color(0xFF2e5fa5);
       case 'agricampeggio':
         return const Color(0xFF4fc3f7);
+      case 'scarico':
+        return const Color(0xFFb23a3a);
+      case 'carico_acqua':
+        return const Color(0xFF2aa7c9);
       default:
         return Colors.blueGrey;
+    }
+  }
+
+  IconData _iconForType() {
+    switch (spot.type) {
+      case 'scarico':
+        return Icons.delete_outline;
+      case 'carico_acqua':
+        return Icons.water_drop;
+      default:
+        return isFavorite ? Icons.favorite : Icons.place;
     }
   }
 
@@ -61,7 +76,7 @@ class SpotMarker extends StatelessWidget {
         child: Column(
           children: [
             Icon(
-              isFavorite ? Icons.favorite : Icons.place,
+              _iconForType(),
               color: getTypeColor(),
               size: 28,
             ),

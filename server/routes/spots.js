@@ -93,10 +93,19 @@ router.get('/:id', async (req, res, next) => {
 // POST /spots - crea un nuovo spot
 router.post('/', async (req, res, next) => {
   try {
-    const { name, description, latitude, longitude, type, services } = req.body || {};
+    const { name, description, latitude, longitude, type, services, rating } = req.body || {};
 
     if (!name || latitude == null || longitude == null) {
       return res.status(400).json({ error: 'name, latitude e longitude sono obbligatori' });
+    }
+
+    let parsedRating = null;
+    if (rating != null) {
+      const r = Number(rating);
+      if (!Number.isFinite(r) || r < 1 || r > 5) {
+        return res.status(400).json({ error: 'rating deve essere un numero tra 1 e 5' });
+      }
+      parsedRating = r;
     }
 
     // userId impostato dal middleware authenticate in app.js
@@ -113,6 +122,9 @@ router.post('/', async (req, res, next) => {
       longitude,
       type,
       services,
+      ...(parsedRating != null
+        ? { ratingAverage: parsedRating, ratingCount: 1 }
+        : {}),
     });
 
     return res.status(201).json(spot);

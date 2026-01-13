@@ -213,14 +213,17 @@ class _AmenitiesGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = services.isEmpty
-        ? <String>['Elettricità', 'Acqua potabile', 'Wi‑Fi', 'Animali ammessi']
-        : services;
+    if (services.isEmpty) {
+      return const Text(
+        'Nessun servizio disponibile',
+        style: TextStyle(color: Colors.white70, fontSize: 13),
+      );
+    }
 
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: items.map((label) {
+      children: services.map((label) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(

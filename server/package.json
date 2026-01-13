@@ -12,7 +12,8 @@
     "start:prod": "NODE_ENV=production node server.js",
     "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles",
     "sync:db": "node sync.js",
-    "seed:spots": "node scripts/seed_spots.js"
+    "seed:spots": "node scripts/seed_spots.js",
+    "seed:spots:osm": "node scripts/seed_spots_osm_ndjson.js"
   },
   "dependencies": {
     "@mapbox/polyline": "^1.1.1",

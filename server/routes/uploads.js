@@ -1,11 +1,14 @@
 'use strict';
 
-const express       = require('express');
-const multer        = require('multer');
-const uploadMem     = multer({ storage: multer.memoryStorage() });
-const authenticate  = require('../middleware/authenticateToken');
-const uploadImage   = require('../middleware/uploadImage');
-const { getPresignedUrl, getPublicUrl } = require('../services/fileStorage');
+const express = require('express');
+const multer = require('multer');
+const uploadMem = multer({ storage: multer.memoryStorage() });
+const authenticate = require('../middleware/authenticateToken');
+const uploadImage = require('../middleware/uploadImage');
+const {
+  getUploadUrl,
+  getPublicUrl,
+} = require('../services/fileStorage');
 
 const router = express.Router();
 
@@ -24,7 +27,7 @@ router.post(
 router.get('/spots/:id/photo-url', async (req, res, next) => {
   try {
     const key = `spots/${req.params.id}/${Date.now()}.jpg`;
-    const url = await getPresignedUrl(key);
+    const url = await getUploadUrl(key, 300);
     res.json({ key, url });
   } catch (err) {
     next(err);
@@ -36,7 +39,7 @@ router.post('/spots/:id/photo', async (req, res, next) => {
   try {
     const { key } = req.body;
     const url = getPublicUrl(key);
-    res.status(201).json({ url });
+    res.status(201).json({ key, url });
   } catch (err) {
     next(err);
   }

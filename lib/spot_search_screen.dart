@@ -115,6 +115,11 @@ class _SpotSearchScreenState extends State<SpotSearchScreen> {
       case 'agricampeggio':
         return 'Agricampeggio';
       case 'area_sosta':
+        return 'Area sosta';
+      case 'scarico':
+        return 'Scarico';
+      case 'carico_acqua':
+        return 'Carico acqua';
       default:
         return 'Area sosta';
     }
@@ -127,6 +132,12 @@ class _SpotSearchScreenState extends State<SpotSearchScreen> {
       case 'agricampeggio':
         return 'assets/icons/markers/icon_ar.png';
       case 'area_sosta':
+        return 'assets/icons/markers/icon_p.png';
+      case 'scarico':
+        // riuso icona servizio (stile coerente con i servizi)
+        return 'assets/icons/markers/service_eau_noire.png';
+      case 'carico_acqua':
+        return 'assets/icons/markers/service_point_eau.png';
       default:
         return 'assets/icons/markers/icon_p.png';
     }

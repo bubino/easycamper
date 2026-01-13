@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api/vehicle_state.dart';
-import 'api/vehicle_models_api.dart';
-import 'vehicle_model_search_screen.dart';
 
 class VehicleFormScreen extends ConsumerStatefulWidget {
   final Vehicle? existing;
@@ -75,42 +73,42 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
             key: _formKey,
             child: ListView(
               children: [
-                Row(
-                  children: [
-                    Expanded(child: _field(_brandCtrl, 'Marca')),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.search, color: Colors.white70),
-                      tooltip: 'Cerca nella libreria modelli',
-                      onPressed: _openVehicleModelSearch,
-                    ),
-                  ],
-                ),
+                _field(_brandCtrl, 'Marca'),
                 _field(_modelCtrl, 'Modello'),
                 _field(
                   _yearCtrl,
                   'Anno',
                   keyboardType: TextInputType.number,
+                  validator: _validateYear,
                 ),
                 _field(
                   _lengthCtrl,
                   'Lunghezza (m)',
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) => _validateDoubleMeters(v, label: 'Lunghezza', min: 2.0, max: 20.0),
                 ),
                 _field(
                   _heightCtrl,
                   'Altezza (m)',
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) => _validateDoubleMeters(v, label: 'Altezza', min: 1.5, max: 6.0),
                 ),
                 _field(
                   _widthCtrl,
                   'Larghezza (m)',
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) => _validateDoubleMeters(v, label: 'Larghezza', min: 1.0, max: 4.0),
                 ),
                 _field(
                   _weightCtrl,
                   'Peso (kg)',
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: _validateWeightKg,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Nota: i dati di lunghezza/altezza/larghezza/peso sono obbligatori per poter usare la navigazione camper-aware.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
@@ -136,37 +134,49 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
     );
   }
 
-  Future<void> _openVehicleModelSearch() async {
-    final selected = await Navigator.of(context).push<VehicleModelDto>(
-      MaterialPageRoute(builder: (_) => const VehicleModelSearchScreen()),
-    );
-    if (selected == null) return;
+  String? _validateYear(String? value) {
+    final v = (value ?? '').trim();
+    if (v.isEmpty) return 'Campo obbligatorio';
+    final year = int.tryParse(v);
+    if (year == null) return 'Inserisci un anno valido';
+    if (year < 1950 || year > DateTime.now().year + 1) {
+      return 'Anno non valido';
+    }
+    return null;
+  }
 
-    setState(() {
-      _brandCtrl.text = selected.brand;
-      _modelCtrl.text = selected.model;
-      if (selected.yearFrom != null) {
-        _yearCtrl.text = selected.yearFrom!.toString();
-      }
-      if (selected.lengthM != null) {
-        _lengthCtrl.text = selected.lengthM!.toStringAsFixed(2);
-      }
-      if (selected.heightM != null) {
-        _heightCtrl.text = selected.heightM!.toStringAsFixed(2);
-      }
-      if (selected.weightKg != null) {
-        _weightCtrl.text = selected.weightKg!.toStringAsFixed(0);
-      }
-      if (selected.widthM != null) {
-        _widthCtrl.text = selected.widthM!.toStringAsFixed(2);
-      }
-    });
+  String? _validateDoubleMeters(
+    String? value, {
+    required String label,
+    required double min,
+    required double max,
+  }) {
+    final raw = (value ?? '').trim();
+    if (raw.isEmpty) return 'Campo obbligatorio';
+
+    // Accetta virgola come separatore decimale
+    final parsed = double.tryParse(raw.replaceAll(',', '.'));
+    if (parsed == null) return '$label: numero non valido';
+    if (parsed < min || parsed > max) {
+      return '$label: valore fuori range';
+    }
+    return null;
+  }
+
+  String? _validateWeightKg(String? value) {
+    final raw = (value ?? '').trim();
+    if (raw.isEmpty) return 'Campo obbligatorio';
+    final parsed = double.tryParse(raw.replaceAll(',', '.'));
+    if (parsed == null) return 'Peso: numero non valido';
+    if (parsed < 500 || parsed > 20000) return 'Peso: valore fuori range';
+    return null;
   }
 
   Widget _field(
     TextEditingController controller,
     String label, {
     TextInputType? keyboardType,
+    String? Function(String?)? validator,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -191,7 +201,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
             borderSide: const BorderSide(color: Color(0xFF1b7f6b)),
           ),
         ),
-        validator: (value) {
+        validator: validator ?? (value) {
           if (value == null || value.trim().isEmpty) {
             return 'Campo obbligatorio';
           }
@@ -208,15 +218,17 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
 
     final id = widget.existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString();
 
+    double _parseDouble(String s) => double.parse(s.trim().replaceAll(',', '.'));
+
     final vehicle = Vehicle(
       id: id,
       brand: _brandCtrl.text.trim(),
       model: _modelCtrl.text.trim(),
-      year: int.tryParse(_yearCtrl.text.trim()) ?? 2000,
-      lengthMeters: double.tryParse(_lengthCtrl.text.trim()) ?? 0,
-      heightMeters: double.tryParse(_heightCtrl.text.trim()) ?? 0,
-      widthMeters: double.tryParse(_widthCtrl.text.trim()) ?? 0,
-      weightKg: double.tryParse(_weightCtrl.text.trim()) ?? 0,
+      year: int.parse(_yearCtrl.text.trim()),
+      lengthMeters: _parseDouble(_lengthCtrl.text),
+      heightMeters: _parseDouble(_heightCtrl.text),
+      widthMeters: _parseDouble(_widthCtrl.text),
+      weightKg: _parseDouble(_weightCtrl.text),
     );
 
     try {

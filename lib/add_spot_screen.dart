@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 
 import 'api/spots_api.dart';
 import 'location_picker_screen.dart';
+import 'spot_detail_screen.dart';
 
 enum SpotLocationSource { none, currentLocation, manual }
 
@@ -25,6 +26,15 @@ String? serviceIconAssetForLabel(String label) {
 
   // Normalize underscores/hyphens
   final norm = lower.replaceAll('‑', '-');
+
+  // Dedicated POI labels (types) mapped to existing service icons
+  if (norm == 'carico acqua' || norm == 'carico_acqua') {
+    return 'assets/icons/markers/service_point_eau.png';
+  }
+  if (norm == 'scarico' || norm.contains('scarico')) {
+    // generic dump icon (black water) for the POI type
+    return 'assets/icons/markers/service_eau_noire.png';
+  }
 
   // Backend keys support (english / snake_case)
   if (norm == 'animals' || norm.contains('animali')) {
@@ -142,6 +152,9 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
 
   mb.MapboxMap? _previewMap;
   mb.PointAnnotationManager? _previewAnnoMgr;
+
+  // Valutazione iniziale dello spot (1..5)
+  int _rating = 4;
 
   String _assetForSelectedType() {
     switch (_selectedType) {
@@ -367,12 +380,33 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
         longitude: _lng!,
         type: _selectedType,
         services: backendServices,
+        rating: _rating,
       );
 
       final api = ref.read(spotsApiClientProvider);
-      await api.createSpot(dto);
+      final created = await api.createSpot(dto);
 
       if (!mounted) return;
+
+      // Proviamo a ottenere l'id (il backend ritorna lo spot creato).
+      final createdId = (created['id'] ?? created['spot']?['id'])?.toString();
+      if (createdId != null && createdId.isNotEmpty) {
+        try {
+          final detail = await api.fetchSpotById(createdId);
+          if (!mounted) return;
+          // Chiudi AddSpotScreen e apri il dettaglio con i dati reali (rating incluso).
+          Navigator.of(context).pop(true);
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => SpotDetailScreen(spot: detail),
+            ),
+          );
+          return;
+        } catch (_) {
+          // ignore: fallback al semplice pop
+        }
+      }
+
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
@@ -443,6 +477,27 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
           Text(label, style: const TextStyle(color: Colors.white)),
         ],
       ),
+    );
+  }
+
+  Widget _ratingStars({required int value, required ValueChanged<int> onChanged}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (i) {
+        final idx = i + 1;
+        final selected = idx <= value;
+        return IconButton(
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          onPressed: () => onChanged(idx),
+          icon: Icon(
+            selected ? Icons.star : Icons.star_border,
+            color: selected ? Colors.amberAccent : Colors.white38,
+            size: 22,
+          ),
+        );
+      }),
     );
   }
 
@@ -665,6 +720,47 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                           focusedBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: primary),
                           ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Valutazione',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFF3b4a3a)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Quanto valuti questo spot?',
+                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                              ),
+                            ),
+                            _ratingStars(
+                              value: _rating,
+                              onChanged: (v) => setState(() => _rating = v),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '$_rating/5',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 24),

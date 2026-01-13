@@ -117,6 +117,8 @@ services:
     volumes:
       - ./server:/usr/src/app
       - ./api/easycamper:/api/easycamper
+    env_file:
+      - ./server/.env
     environment:
       - POSTGRES_HOST=db
     networks:

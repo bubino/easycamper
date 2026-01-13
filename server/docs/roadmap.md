@@ -269,6 +269,14 @@
 - [x] Refactoring middleware validazione/ownership
 - [x] Sicurezza: protezione da accessi non autorizzati, injection, attacchi comuni
 
+### Flutter – Gestione veicoli (aggiornamenti locali)
+- [x] Campi tecnici veicolo obbligatori e validati in UI (lunghezza/altezza/larghezza/peso) per navigazione camper-aware
+- [x] Rimossa (per ora) la ricerca catalogo modelli dal form veicolo: inserimento manuale come flusso principale
+- [x] Immagine veicolo opzionale in "I miei veicoli" con salvataggio locale (SharedPreferences) e preview in lista
+- [x] Pulizia automatica immagine veicolo in SharedPreferences quando un veicolo viene eliminato
+- [x] Fix UI: bottone "AVVIA NAVIGAZIONE" con testo bianco
+- [x] Blocco avvio navigazione se non esiste almeno 1 veicolo salvato (redirect a schermata inserimento veicolo)
+
 ---
 
 ## Checklist Sicurezza

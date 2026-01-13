@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
 
 import 'http_client.dart';
 import 'spot_dto.dart';
@@ -78,6 +79,9 @@ class SpotCreateDto {
   final String type; // es. 'area_sosta'
   final Map<String, bool> services; // chiavi allineate al backend (es. "Elettricità")
 
+  /// Valutazione iniziale fornita dall'utente (1..5). Facoltativa.
+  final int? rating;
+
   SpotCreateDto({
     required this.name,
     this.description,
@@ -85,6 +89,7 @@ class SpotCreateDto {
     required this.longitude,
     required this.type,
     required this.services,
+    this.rating,
   });
 
   Map<String, dynamic> toJson() => {
@@ -94,6 +99,7 @@ class SpotCreateDto {
         'longitude': longitude,
         'type': type,
         'services': services,
+        if (rating != null) 'rating': rating,
       };
 }
 
@@ -128,6 +134,12 @@ class SpotsApiClient {
       if (minRating != null) 'minRating': minRating,
     };
 
+    if (kDebugMode) {
+      debugPrint(
+        'SPOTS API DEBUG: baseUrl=$baseUrl bbox=${query['bbox']} types=${types ?? const []} services=${services ?? const []} minRating=$minRating',
+      );
+    }
+
     // Allineato a server/app.js: app.use('/spots', authenticate, require('./routes/spots'));
     final resp = await _http.get(
       '/spots',
@@ -136,10 +148,17 @@ class SpotsApiClient {
     );
 
     if (resp.statusCode != 200) {
+      if (kDebugMode) {
+        final snippet = resp.body.length > 300 ? resp.body.substring(0, 300) : resp.body;
+        debugPrint('SPOTS API DEBUG: status=${resp.statusCode} body=$snippet');
+      }
       throw Exception('Errore caricamento spots: ${resp.statusCode}');
     }
 
     final data = jsonDecode(resp.body) as Map<String, dynamic>;
+    if (kDebugMode) {
+      debugPrint('SPOTS API DEBUG: response keys=${data.keys.toList()} total=${data['total']}');
+    }
     final spotsJson = data['spots'] as List<dynamic>? ?? const [];
 
     return spotsJson
@@ -220,12 +239,33 @@ class SpotsApiClient {
     }
 
     final created = jsonDecode(resp.body) as Map<String, dynamic>;
+
     // best-effort: se il backend ritorna i campi completi spot, mettili in cache
     try {
-      final maybeSpot = SpotDto.fromJson(created['spot'] is Map<String, dynamic>
-          ? (created['spot'] as Map<String, dynamic>)
-          : created);
+      final maybeSpotJson =
+          created['spot'] is Map<String, dynamic> ? created['spot'] : created;
+      final maybeSpot = SpotDto.fromJson(maybeSpotJson as Map<String, dynamic>);
       _cacheSpot(maybeSpot);
+
+      // Se abbiamo un id valido, ricarichiamo i dettagli per evitare dati parziali
+      // (es. ratingAverage/ratingCount non presenti o non coerenti nella response).
+      if (maybeSpot.id.isNotEmpty) {
+        try {
+          final detailResp = await _http.get(
+            '/spots/${maybeSpot.id}',
+            authenticated: true,
+          );
+          if (detailResp.statusCode == 200) {
+            final detailJson = jsonDecode(detailResp.body);
+            if (detailJson is Map<String, dynamic>) {
+              final spot = SpotDto.fromJson(detailJson);
+              _cacheSpot(spot);
+            }
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
     } catch (_) {
       // ignore
     }

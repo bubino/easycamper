@@ -10,6 +10,9 @@ class Vehicle {
   final double widthMeters;
   final double weightKg;
 
+  /// Path locale dell'immagine associata al veicolo (opzionale).
+  final String? imagePath;
+
   const Vehicle({
     required this.id,
     required this.brand,
@@ -19,6 +22,7 @@ class Vehicle {
     required this.heightMeters,
     required this.widthMeters,
     required this.weightKg,
+    this.imagePath,
   });
 
   Vehicle copyWith({
@@ -30,6 +34,8 @@ class Vehicle {
     double? heightMeters,
     double? widthMeters,
     double? weightKg,
+    String? imagePath,
+    bool clearImagePath = false,
   }) {
     return Vehicle(
       id: id ?? this.id,
@@ -40,6 +46,7 @@ class Vehicle {
       heightMeters: heightMeters ?? this.heightMeters,
       widthMeters: widthMeters ?? this.widthMeters,
       weightKg: weightKg ?? this.weightKg,
+      imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
     );
   }
 }

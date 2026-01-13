@@ -35,10 +35,18 @@
     - [x] Aggiunto campo opzionale `vehicleModelId` al model `Vehicle` e associazione `belongsTo(VehicleModel)`
     - [x] Estese le route `/vehicles` (POST/PUT) per accettare `vehicleModelId` e, se `length/height/weight` mancano, ereditare i valori dal `VehicleModel` associato
     - [x] Test Jest/Supertest per integrazione `/vehicles` ↔ `VehicleModels` (`server/__tests__/vehicles.vehicleModel.test.js`)
-  - [x] App Flutter: integrazione libreria modelli nel form veicolo
+  - [ ] App Flutter: integrazione libreria modelli nel form veicolo
     - [x] Creato client `lib/api/vehicle_models_api.dart` con DTO `VehicleModelDto` per `/api/vehicle-models`
     - [x] Aggiunta schermata `VehicleModelSearchScreen` per cercare modelli (marca/modello) e selezionarne uno
-    - [x] Integrata `VehicleModelSearchScreen` in `vehicle_form_screen.dart` con pulsante "Cerca modello dal catalogo" che precompila marca/modello/dimensioni/peso in base al modello scelto
+    - [ ] Integrata `VehicleModelSearchScreen` in `vehicle_form_screen.dart` con pulsante "Cerca modello dal catalogo" che precompila marca/modello/dimensioni/peso in base al modello scelto (disattivato: ora inserimento manuale)
+  - [x] App Flutter: veicoli (flusso manuale)
+    - [x] Campi tecnici obbligatori e validati in UI (lunghezza/altezza/larghezza/peso) per navigazione camper-aware
+    - [x] Immagine veicolo opzionale in "I miei veicoli" con salvataggio locale (SharedPreferences) e preview in lista
+    - [x] Pulizia automatica immagine in SharedPreferences quando un veicolo viene eliminato
+
+- [x] Navigazione verso POI (UI)
+  - [x] Fix UI: testo bianco su bottone "AVVIA NAVIGAZIONE"
+  - [x] Blocco avvio navigazione se non esiste almeno 1 veicolo salvato: redirect a "I miei veicoli" per aggiungerlo
 
 - [x] Scheda POI (dettaglio spot)
   - [x] Visualizzare scheda dettaglio spot con titolo, descrizione, servizi (Amenities) e sezione Reviews

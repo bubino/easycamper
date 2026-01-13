@@ -2,21 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:typed_data';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api/spot_dto.dart';
+import 'api/vehicle_state.dart';
+import 'my_vehicles_screen.dart';
 
 enum CamperRouteType { eco, fast, scenic }
 
-class NavigationOptionsScreen extends StatefulWidget {
+class NavigationOptionsScreen extends ConsumerStatefulWidget {
   final SpotDto spot;
 
   const NavigationOptionsScreen({super.key, required this.spot});
 
   @override
-  State<NavigationOptionsScreen> createState() => _NavigationOptionsScreenState();
+  ConsumerState<NavigationOptionsScreen> createState() =>
+      _NavigationOptionsScreenState();
 }
 
-class _NavigationOptionsScreenState extends State<NavigationOptionsScreen> {
+class _NavigationOptionsScreenState
+    extends ConsumerState<NavigationOptionsScreen> {
   CamperRouteType? _selected;
   MapboxMap? _previewMap;
   PointAnnotationManager? _annoMgr;
@@ -92,6 +97,66 @@ class _NavigationOptionsScreenState extends State<NavigationOptionsScreen> {
     // In the future we’ll call the routing backend and draw the returned polyline.
     // Here we just keep the destination marker visible.
     await _renderDestinationMarker();
+  }
+
+  Future<bool> _ensureVehicleSelected() async {
+    final vehicles = ref.read(vehiclesProvider);
+    if (vehicles.isNotEmpty) return true;
+
+    const cardBg = Color(0xFF0d221a);
+    const primary = Color(0xFF1b7f6b);
+    const accentText = Color(0xFFd6f1e5);
+
+    final shouldGo = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: cardBg,
+          surfaceTintColor: cardBg,
+          titleTextStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+          contentTextStyle: const TextStyle(
+            color: Colors.white70,
+            fontSize: 14,
+            height: 1.35,
+          ),
+          title: const Text('Aggiungi un veicolo'),
+          content: const Text(
+            'Per usare la navigazione devi prima aggiungere un veicolo con altezza, lunghezza, larghezza e peso.',
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: accentText,
+              ),
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annulla'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Aggiungi veicolo'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldGo != true) return false;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const MyVehiclesScreen()),
+    );
+
+    final after = ref.read(vehiclesProvider);
+    return after.isNotEmpty;
   }
 
   @override
@@ -189,13 +254,21 @@ class _NavigationOptionsScreenState extends State<NavigationOptionsScreen> {
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: primary,
+              foregroundColor: Colors.white,
             ),
             onPressed: _selected == null
                 ? null
-                : () {
+                : () async {
+                    final ok = await _ensureVehicleSelected();
+                    if (!ok) return;
+
                     // TODO: agganciare al sistema di routing reale.
-                    debugPrint('START NAVIGATION to ${widget.spot.name} with $_selected');
-                    Navigator.of(context).pop();
+                    debugPrint(
+                      'START NAVIGATION to ${widget.spot.name} with $_selected',
+                    );
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
                   },
             child: const Text('AVVIA NAVIGAZIONE'),
           ),

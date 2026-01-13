@@ -7,10 +7,10 @@
     "models": []
   },
   "Benimar": {
-  "domain": "benimar.com",
-  "logoAsset": null,
-  "models": []
-},
+    "domain": "benimar.com",
+    "logoAsset": null,
+    "models": []
+  },
   "Buerstner": {
     "domain": "buerstner.de",
     "logoAsset": "buerstner.png",
@@ -42,14 +42,14 @@
   "Coachmen": {
     "domain": "coachmenrv.com",
     "logoAsset": "coachmen.png",
-    "iconName": "dethleffs",
+    "iconName": "coachmenrv",
     "license": "MIT",
     "models": []
   },
   "Dethleffs": {
     "domain": "dethleffs.com",
     "logoAsset": "dethleffs.png",
-    "iconName": "coachmenrv",
+    "iconName": "dethleffs",
     "license": "MIT",
     "models": []
   },

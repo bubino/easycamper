@@ -85,6 +85,13 @@ class EasyCamperMapState extends State<EasyCamperMap> {
       case 'agricampeggio':
         return 'assets/icons/markers/icon_ar.png';
       case 'area_sosta':
+        return 'assets/icons/markers/icon_p.png';
+      case 'scarico':
+        // POI tecnico: riuso icona servizio per marker in mappa
+        return 'assets/icons/markers/service_eau_noire.png';
+      case 'carico_acqua':
+        // POI tecnico: riuso icona servizio per marker in mappa
+        return 'assets/icons/markers/service_point_eau.png';
       default:
         return 'assets/icons/markers/icon_p.png';
     }
@@ -302,12 +309,16 @@ class EasyCamperMapState extends State<EasyCamperMap> {
       final bytes = await _loadMarkerBytes(asset) ??
           await _loadMarkerBytes('assets/icons/markers/icon_p.png');
 
+      // I marker servizi (scarico/carico) sono PNG più piccoli: li ridimensioniamo
+      // rispetto ai marker standard (icon_p/icon_c/...)
+      final isServiceMarker = spot.type == 'scarico' || spot.type == 'carico_acqua';
+
       annotations.add(
         PointAnnotationOptions(
           geometry: Point(coordinates: Position(spot.longitude, spot.latitude)),
           image: bytes,
           // Bigger markers to make tapping easier on real iPhone.
-          iconSize: 2.6,
+          iconSize: isServiceMarker ? 2.2 : 2.6,
         ),
       );
     }

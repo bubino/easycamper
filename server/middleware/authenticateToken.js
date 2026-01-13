@@ -6,6 +6,16 @@ module.exports = function authenticateToken(req, res, next) {
   const authHeader =
     req.headers['authorization'] || req.headers['Authorization'];
 
+  // DEV diagnostics (avoid leaking in production logs)
+  if ((process.env.NODE_ENV || 'development') === 'development') {
+    if (!authHeader) {
+      console.log(`[AUTH DEBUG] ${req.method} ${req.originalUrl} -> missing Authorization header`);
+    } else {
+      const preview = String(authHeader).slice(0, 32);
+      console.log(`[AUTH DEBUG] ${req.method} ${req.originalUrl} -> Authorization: ${preview}...`);
+    }
+  }
+
   // Skip authentication for email change confirmation
   if (req.method === 'GET' && req.path === '/confirm-email-change') {
     return next();
@@ -24,6 +34,10 @@ module.exports = function authenticateToken(req, res, next) {
   const token = authHeader.startsWith('Bearer ')
     ? authHeader.slice(7).trim()
     : authHeader.trim();
+
+  if ((process.env.NODE_ENV || 'development') === 'development') {
+    console.log(`[AUTH DEBUG] token length=${token.length}`);
+  }
 
   // empty token after “Bearer ”
   if (!token) {
