@@ -137,6 +137,37 @@ class SpotUpdateDto {
       };
 }
 
+class SpotReviewDto {
+  final String id;
+  final String userId;
+  final String? username;
+  final int rating;
+  final String? comment;
+  final DateTime? createdAt;
+
+  const SpotReviewDto({
+    required this.id,
+    required this.userId,
+    this.username,
+    required this.rating,
+    this.comment,
+    this.createdAt,
+  });
+
+  factory SpotReviewDto.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>?;
+    final createdAtRaw = json['createdAt'] ?? json['created_at'];
+    return SpotReviewDto(
+      id: json['id'].toString(),
+      userId: json['userId']?.toString() ?? json['user_id']?.toString() ?? '',
+      username: user?['username']?.toString() ?? user?['email']?.toString(),
+      rating: (json['rating'] as num).toInt(),
+      comment: json['comment']?.toString(),
+      createdAt: createdAtRaw is String ? DateTime.tryParse(createdAtRaw) : null,
+    );
+  }
+}
+
 class SpotsApiClient {
   final String baseUrl;
   final ApiHttpClient _http;
@@ -425,6 +456,39 @@ class SpotsApiClient {
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw Exception('Errore PUT presigned upload: ${resp.statusCode}');
     }
+  }
+}
+
+extension SpotsApiReviews on SpotsApiClient {
+  Future<List<SpotReviewDto>> fetchSpotReviews(String spotId) async {
+    final resp = await _http.get('/spots/$spotId/reviews', authenticated: true);
+    if (resp.statusCode != 200) {
+      throw Exception('Errore caricamento recensioni: ${resp.statusCode}');
+    }
+    final body = jsonDecode(resp.body);
+    final list = (body is Map<String, dynamic> ? body['reviews'] : null) as List<dynamic>? ?? const [];
+    return list.map((e) => SpotReviewDto.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Crea o aggiorna la recensione dell'utente corrente per lo spot.
+  Future<void> upsertSpotReview(
+    String spotId, {
+    required int rating,
+    String? comment,
+  }) async {
+    final resp = await _http.post(
+      '/spots/$spotId/reviews',
+      authenticated: true,
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({'rating': rating, 'comment': comment}),
+    );
+
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw Exception('Errore invio recensione: ${resp.statusCode}');
+    }
+
+    // rating dello spot  e8 cambiato: invalida cache
+    _spotCache.remove(spotId);
   }
 }
 

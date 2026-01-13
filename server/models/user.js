@@ -7,6 +7,14 @@ module.exports = (sequelize, DataTypes) => {
     async validatePassword(password) {
       return bcrypt.compare(password, this.password);
     }
+
+    static associate(models) {
+      User.hasMany(models.SpotReview, {
+        foreignKey: 'userId',
+        as: 'spotReviews',
+        onDelete: 'CASCADE',
+      });
+    }
   }
 
   User.init({

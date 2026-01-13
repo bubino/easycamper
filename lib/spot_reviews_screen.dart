@@ -1,43 +1,47 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class SpotReviewsScreen extends StatefulWidget {
+import 'api/spots_api.dart';
+
+class SpotReviewsScreen extends ConsumerStatefulWidget {
+  final String spotId;
   final String spotName;
 
-  const SpotReviewsScreen({super.key, required this.spotName});
+  const SpotReviewsScreen({super.key, required this.spotId, required this.spotName});
 
   @override
-  State<SpotReviewsScreen> createState() => _SpotReviewsScreenState();
+  ConsumerState<SpotReviewsScreen> createState() => _SpotReviewsScreenState();
 }
 
-class _SpotReviewsScreenState extends State<SpotReviewsScreen> {
-  final List<_Review> _reviews = [
-    const _Review(
-      author: 'Marco R.',
-      rating: 5,
-      text:
-          'Area molto tranquilla, servizi puliti e personale gentile. Perfetta per visitare il centro.',
-      date: '2 giorni fa',
-    ),
-    const _Review(
-      author: 'Laura S.',
-      rating: 4,
-      text: 'Piazzole spaziose, un po\' rumorosa la sera ma nel complesso ottima.',
-      date: '1 settimana fa',
-    ),
-    const _Review(
-      author: 'Stefano B.',
-      rating: 3,
-      text:
-          'Servizi ok ma sarebbe utile avere più prese elettriche. Comoda la posizione.',
-      date: '3 settimane fa',
-    ),
-  ];
+class _SpotReviewsScreenState extends ConsumerState<SpotReviewsScreen> {
+  bool _loading = true;
+  List<SpotReviewDto> _reviews = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final api = ref.read(spotsApiClientProvider);
+      final items = await api.fetchSpotReviews(widget.spotId);
+      if (!mounted) return;
+      setState(() => _reviews = items);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore caricamento recensioni: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   Future<void> _openAddReviewDialog() async {
-    final result = await showModalBottomSheet<_Review>(
+    final result = await showModalBottomSheet<_ReviewDraft>(
       context: context,
       isScrollControlled: true,
       backgroundColor: const Color(0xFF071814),
@@ -47,27 +51,22 @@ class _SpotReviewsScreenState extends State<SpotReviewsScreen> {
       builder: (ctx) => const _AddReviewSheet(),
     );
 
-    if (result != null) {
-      setState(() {
-        _reviews.insert(0, result);
-      });
+    if (result == null) return;
+
+    try {
+      final api = ref.read(spotsApiClientProvider);
+      await api.upsertSpotReview(
+        widget.spotId,
+        rating: result.rating,
+        comment: result.text,
+      );
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossibile pubblicare la recensione: $e')),
+      );
     }
-  }
-
-  void _openPhotoViewer({
-    required List<String> photoPaths,
-    required int initialIndex,
-  }) {
-    if (photoPaths.isEmpty) return;
-
-    showDialog<void>(
-      context: context,
-      barrierColor: Colors.black.withOpacity(0.95),
-      builder: (_) => _PhotoViewerDialog(
-        photoPaths: photoPaths,
-        initialIndex: initialIndex,
-      ),
-    );
   }
 
   @override
@@ -84,10 +83,7 @@ class _SpotReviewsScreenState extends State<SpotReviewsScreen> {
       appBar: AppBar(
         backgroundColor: darkBg,
         elevation: 0,
-        title: Text(
-          title,
-          style: const TextStyle(color: Colors.white),
-        ),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
@@ -97,94 +93,61 @@ class _SpotReviewsScreenState extends State<SpotReviewsScreen> {
           ),
         ],
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemBuilder: (context, index) {
-          final r = _reviews[index];
-          return Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF123426)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      r.author,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Row(
-                      children: List.generate(5, (i) {
-                        return Icon(
-                          i < r.rating ? Icons.star : Icons.star_border,
-                          size: 14,
-                          color: Colors.amber,
-                        );
-                      }),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  r.date,
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 11,
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemBuilder: (context, index) {
+                final r = _reviews[index];
+                final author = (r.username == null || r.username!.isEmpty) ? r.userId : r.username!;
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF123426)),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  r.text,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-                if (r.photoPaths.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 80,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: r.photoPaths.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, i) {
-                        final file = File(r.photoPaths[i]);
-                        return GestureDetector(
-                          onTap: () => _openPhotoViewer(
-                            photoPaths: r.photoPaths,
-                            initialIndex: i,
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              file,
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            author,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        );
-                      },
-                    ),
+                          Row(
+                            children: List.generate(5, (i) {
+                              return Icon(
+                                i < r.rating ? Icons.star : Icons.star_border,
+                                size: 14,
+                                color: Colors.amber,
+                              );
+                            }),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (r.comment != null && r.comment!.trim().isNotEmpty)
+                        Text(
+                          r.comment!,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              ],
+                );
+              },
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemCount: _reviews.length,
             ),
-          );
-        },
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemCount: _reviews.length,
-      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openAddReviewDialog,
         icon: const Icon(Icons.rate_review),
@@ -194,20 +157,10 @@ class _SpotReviewsScreenState extends State<SpotReviewsScreen> {
   }
 }
 
-class _Review {
-  final String author;
+class _ReviewDraft {
   final int rating;
   final String text;
-  final String date;
-  final List<String> photoPaths;
-
-  const _Review({
-    required this.author,
-    required this.rating,
-    required this.text,
-    required this.date,
-    this.photoPaths = const [],
-  });
+  const _ReviewDraft({required this.rating, required this.text});
 }
 
 class _AddReviewSheet extends StatefulWidget {
@@ -221,7 +174,6 @@ class _AddReviewSheetState extends State<_AddReviewSheet> {
   final _formKey = GlobalKey<FormState>();
   final _textCtrl = TextEditingController();
   int _rating = 5;
-  final List<XFile> _photos = [];
 
   @override
   void dispose() {
@@ -229,37 +181,14 @@ class _AddReviewSheetState extends State<_AddReviewSheet> {
     super.dispose();
   }
 
-  Future<void> _pickPhotos() async {
-    final picker = ImagePicker();
-    try {
-      final files = await picker.pickMultiImage();
-      if (files.isEmpty) return;
-      setState(() {
-        // massimo 2 foto
-        final remaining = 2 - _photos.length;
-        if (remaining <= 0) return;
-        _photos.addAll(files.take(remaining));
-      });
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Errore durante la selezione delle foto.')),
-      );
-    }
-  }
-
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    final review = _Review(
-      author: 'Utente', // mock, in futuro useremo il profilo reale
+    final draft = _ReviewDraft(
       rating: _rating,
       text: _textCtrl.text.trim(),
-      date: 'Adesso',
-      photoPaths: _photos.map((p) => p.path).toList(),
     );
-
-    Navigator.of(context).pop<_Review>(review);
+    Navigator.of(context).pop<_ReviewDraft>(draft);
   }
 
   @override
@@ -331,45 +260,6 @@ class _AddReviewSheetState extends State<_AddReviewSheet> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed:
-                          _photos.length >= 2 ? null : _pickPhotos,
-                      icon: const Icon(Icons.add_a_photo, size: 18),
-                      label: const Text('Aggiungi foto'),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      _photos.isEmpty
-                          ? 'Max 2 foto'
-                          : '${_photos.length} / 2 foto',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (_photos.isNotEmpty)
-                  SizedBox(
-                    height: 70,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _photos.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, i) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            File(_photos[i].path),
-                            width: 70,
-                            height: 70,
-                            fit: BoxFit.cover,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -388,95 +278,6 @@ class _AddReviewSheetState extends State<_AddReviewSheet> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PhotoViewerDialog extends StatefulWidget {
-  final List<String> photoPaths;
-  final int initialIndex;
-
-  const _PhotoViewerDialog({
-    required this.photoPaths,
-    required this.initialIndex,
-  });
-
-  @override
-  State<_PhotoViewerDialog> createState() => _PhotoViewerDialogState();
-}
-
-class _PhotoViewerDialogState extends State<_PhotoViewerDialog> {
-  late final PageController _pageController;
-  int _index = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _index = widget.initialIndex.clamp(0, widget.photoPaths.length - 1);
-    _pageController = PageController(initialPage: _index);
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final total = widget.photoPaths.length;
-
-    return Dialog(
-      insetPadding: EdgeInsets.zero,
-      backgroundColor: Colors.transparent,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: total,
-              onPageChanged: (i) => setState(() => _index = i),
-              itemBuilder: (context, i) {
-                final path = widget.photoPaths[i];
-                return InteractiveViewer(
-                  minScale: 1.0,
-                  maxScale: 5.0,
-                  child: Center(
-                    child: Image.file(
-                      File(path),
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 8,
-            child: IconButton(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.close, color: Colors.white),
-              tooltip: 'Chiudi',
-            ),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '${_index + 1} / $total',
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

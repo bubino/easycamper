@@ -207,6 +207,7 @@ class SpotDetailScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 12),
                           _ReviewsSection(
+                            spotId: spot.id,
                             rating: spot.rating,
                             spotName: spot.name,
                           ),
@@ -511,10 +512,12 @@ class _AmenitiesGrid extends StatelessWidget {
 }
 
 class _ReviewsSection extends StatelessWidget {
+  final String spotId;
   final double rating;
   final String spotName;
 
   const _ReviewsSection({
+    required this.spotId,
     required this.rating,
     required this.spotName,
   });
@@ -633,7 +636,10 @@ class _ReviewsSection extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => SpotReviewsScreen(spotName: spotName),
+                  builder: (_) => SpotReviewsScreen(
+                    spotId: spotId,
+                    spotName: spotName,
+                  ),
                 ),
               );
             },
