@@ -26,14 +26,14 @@ describe('Vehicles ↔ VehicleModels integration', () => {
       id: '00000000-0000-0000-0000-000000000001',
       username: 'vehicle-test-user',
       email: 'vehicle@test.com',
-      passwordHash: 'hash',
+      password: 'password',
     });
 
-    // In test l'app decodifica solo il payload, non verifica la firma
-    token = require('jsonwebtoken').sign({ id: user.id }, 'test-secret');
+    // In test l'app decodifica solo il payload, ma verifica comunque la firma con JWT_SECRET (default: 'testsecret')
+    token = require('jsonwebtoken').sign({ id: user.id }, process.env.JWT_SECRET || 'testsecret');
 
     vm = await VehicleModel.create({
-      id: 'vm-1',
+      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
       brand: 'Fiat',
       model: 'Ducato Test',
       year_from: 2020,
@@ -99,7 +99,7 @@ describe('Vehicles ↔ VehicleModels integration', () => {
         make: 'Fiat',
         model: 'Ducato Invalid',
         year: 2021,
-        vehicleModelId: 'nonexistent',
+        vehicleModelId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
       })
       .expect(400);
 

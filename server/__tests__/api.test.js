@@ -106,10 +106,13 @@ describe('Spots API', () => {
   it('GET /spots -> []', async () => {
     const res = await request(app)
       .get('/spots')
+      .query({ bbox: '44.0,6.0,46.0,8.0' })
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual([]);
+    expect(res.body).toHaveProperty('spots');
+    expect(Array.isArray(res.body.spots)).toBe(true);
+    expect(res.body.spots).toEqual([]);
   });
 
   it('POST /spots -> 201', async () => {
@@ -134,8 +137,10 @@ describe('Spots API', () => {
     // GET list
     let res = await request(app)
       .get('/spots')
+      .query({ bbox: '44.0,6.0,46.0,8.0' })
       .set('Authorization', `Bearer ${token}`);
-    expect(res.body).toHaveLength(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.spots).toHaveLength(1);
 
     // GET single
     res = await request(app)
@@ -161,8 +166,10 @@ describe('Spots API', () => {
     // Conferma cancellazione
     res = await request(app)
       .get('/spots')
+      .query({ bbox: '44.0,6.0,46.0,8.0' })
       .set('Authorization', `Bearer ${token}`);
-    expect(res.body).toEqual([]);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.spots).toEqual([]);
   });
 });
 

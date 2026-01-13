@@ -1,14 +1,11 @@
 // cleanupRefreshTokens.js
-const { Sequelize, DataTypes, Op } = require('sequelize');
-// Choose DB: SQLite file if provided, otherwise Postgres via DATABASE_URL
-let sequelize;
-if (process.env.DATABASE_URL) {
-  sequelize = new Sequelize(process.env.DATABASE_URL, { dialect: 'postgres', logging: false });
-} else {
-  const storage = process.env.SQLITE_STORAGE || ':memory:';
-  sequelize = new Sequelize({ dialect: 'sqlite', storage, logging: false });
-}
-// Load only the RefreshToken model
+const { DataTypes, Op } = require('sequelize');
+
+// Use the same sequelize instance/configuration as the app/tests.
+// This ensures TEST_DB=postgres and SQLITE_STORAGE are respected.
+const { sequelize } = require('./models');
+
+// Load only the RefreshToken model onto the shared sequelize instance.
 const RefreshTokenModel = require('./models/RefreshToken');
 const RefreshToken = RefreshTokenModel(sequelize, DataTypes);
 
@@ -16,13 +13,14 @@ const RefreshToken = RefreshTokenModel(sequelize, DataTypes);
   try {
     await sequelize.authenticate();
     await sequelize.sync(); // Assicura che la tabella esista
-    // Usa now - 1 secondo per evitare problemi di precisione
-    const now = new Date(Date.now() - 1000);
+
+    const now = new Date();
     const deleted = await RefreshToken.destroy({
       where: {
-        expiresAt: { [Op.lt]: now }
-      }
+        expiresAt: { [Op.lte]: now },
+      },
     });
+
     console.log(`✅ Refresh token scaduti eliminati: ${deleted}`);
     process.exit(0);
   } catch (err) {

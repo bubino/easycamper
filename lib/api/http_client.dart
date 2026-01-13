@@ -58,6 +58,36 @@ class ApiHttpClient {
     );
   }
 
+  Future<http.Response> put(
+    String path, {
+    Map<String, String>? headers,
+    Object? body,
+    bool authenticated = true,
+  }) async {
+    return _send(
+      'PUT',
+      path,
+      headers: headers,
+      body: body,
+      authenticated: authenticated,
+    );
+  }
+
+  Future<http.Response> delete(
+    String path, {
+    Map<String, String>? headers,
+    Object? body,
+    bool authenticated = true,
+  }) async {
+    return _send(
+      'DELETE',
+      path,
+      headers: headers,
+      body: body,
+      authenticated: authenticated,
+    );
+  }
+
   Future<http.Response> _send(
     String method,
     String path, {

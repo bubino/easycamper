@@ -20,10 +20,10 @@ describe('User email change flow', () => {
     await User.destroy({ where: {} });
 
     user = await User.create({
-      id: 1,
+      id: '11111111-1111-1111-1111-111111111111',
       username: 'testuser',
       email: 'old@example.com',
-      passwordHash: 'hash',
+      password: 'password',
       emailVerified: true,
     });
   });
@@ -45,7 +45,7 @@ describe('User email change flow', () => {
   test('POST /users/:id/change-email - utente non trovato', async () => {
     await User.destroy({ where: {} });
     const res = await request(app)
-      .post('/users/999/change-email')
+      .post('/users/22222222-2222-2222-2222-222222222222/change-email')
       .send({ newEmail: 'new@example.com' })
       .expect(404);
     expect(res.body.error).toMatch(/Utente non trovato/);

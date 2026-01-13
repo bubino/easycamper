@@ -52,7 +52,14 @@ describe('Cleanup refresh tokens', () => {
     // Esegui lo script di cleanup con la stessa variabile d'ambiente
     execSync('node cleanupRefreshTokens.js', {
       cwd: path.join(__dirname, '..'),
-      env: { ...process.env, NODE_ENV: 'test', SQLITE_STORAGE: dbPath },
+      env: {
+        ...process.env,
+        NODE_ENV: 'test',
+        // This test uses a SQLite file DB; force the script to use it even when the global test run uses Postgres.
+        TEST_DB: '',
+        DATABASE_URL: '',
+        SQLITE_STORAGE: dbPath,
+      },
       stdio: 'inherit',
     });
 

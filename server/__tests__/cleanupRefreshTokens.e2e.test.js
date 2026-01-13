@@ -49,8 +49,12 @@ describe('E2E cleanupRefreshTokens.js', () => {
         {
           env: {
             ...process.env,
-            NODE_ENV: 'e2e',
-            SQLITE_STORAGE: dbPath, // custom env var
+            NODE_ENV: 'test',
+            // This E2E test is intentionally SQLite-file based.
+            // Force the cleanup script to use the same SQLite DB even when the overall suite is running with TEST_DB=postgres.
+            TEST_DB: '',
+            DATABASE_URL: '',
+            SQLITE_STORAGE: dbPath,
           },
           stdio: 'inherit',
         }

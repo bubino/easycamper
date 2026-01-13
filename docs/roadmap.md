@@ -51,6 +51,9 @@
 - [x] Scheda POI (dettaglio spot)
   - [x] Visualizzare scheda dettaglio spot con titolo, descrizione, servizi (Amenities) e sezione Reviews
   - [x] Aggiungere schermata `SpotReviewsScreen` con elenco mock di recensioni accessibile da "Vedi tutte le recensioni"
+  - [x] Aggiungere azioni **Modifica/Elimina** (menu ⋮) **solo per spot creati dall’utente** (UX minimale, conferma delete + form edit base)
+  - [ ] Ownership reale: far restituire dal backend `userId`/`ownerId` in `GET /spots` e `GET /spots/:id` e mappare in `SpotDto` per abilitare correttamente Modifica/Elimina (senza euristiche client)
+  - [ ] Estendere la modifica spot: supportare anche tipo, servizi e posizione (oltre a nome/descrizione)
   - [ ] Collegare il rating medio e il conteggio recensioni a dati reali da backend (`/spots/:id` + `/spots/:id/reviews`), sostituendo valori mock (`124 reviews`, percentuali 5★/4★/3★)
 
 - [ ] Gestione foto spot / POI
@@ -66,6 +69,38 @@
   - [ ] Integrare anteprima mappa/posizione reale: usare posizione corrente (GPS) o tap sulla mappa per settare lat/lng dello spot
   - [ ] Definire payload `POST /spots` (inclusi lat/lng, tipo, servizi, foto) e relativa route backend
   - [ ] Collegare `AddSpotScreen` al backend (`POST /spots`) e ricaricare i POI sulla mappa dopo inserimento riuscito
+
+- [ ] Backend: stabilizzare infrastruttura test (Jest + Sequelize)
+  - [ ] Verificare e documentare DB usato in produzione vs test (Postgres in produzione, SQLite in test) e motivazioni
+  - [ ] **Decisione DB per i test**: scegliere tra
+    - [ ] SQLite in-memory (massima velocità, ma differenze SQL/dialect)
+    - [ ] Postgres in Docker (più lento, ma fedele a produzione)
+  - [ ] **Verifica stack attuale**: controllare cosa usiamo davvero in produzione (ENV/compose) e in base a quello procedere
+    - [ ] Se produzione = Postgres → impostare default test su Postgres Docker (E2E) e mantenere SQLite solo per unit test veloci
+    - [ ] Se produzione = SQLite → uniformare e rimuovere dipendenze Postgres-specific (es. `ILIKE`)
+  - [ ] Centralizzare bootstrap DB per i test in `server/jest.setup.js` (una sola init + `sequelize.sync({ force: true })` quando serve)
+  - [ ] Rendere i test idempotenti: cleanup sicuro anche se `beforeAll` fallisce (evitare `where: { id: undefined }`)
+  - [x] Eliminare flakiness dovuta a inizializzazioni multiple dei modelli/Sequelize (caricamento dei modelli una volta, evitare side effect a import-time)
+  - [ ] Fix query cross-dialect (SQLite vs Postgres), es. sostituire `ILIKE` con strategia compatibile (`LIKE` + `lower()` o condizionale sul dialect)
+  - [ ] Allineare configurazioni `server/config/config.js` e `server/config/config.json` (evitare doppie fonti divergenti)
+  - [x] Definire modalità E2E: SQLite file-based oppure Postgres via `server/docker-compose.test.yml` (documentare e automatizzare)
+  - [x] Supportare run test su Postgres anche senza `DATABASE_URL` (fallback a config quando `TEST_DB=postgres`)
+  - [x] Fix script `cleanupRefreshTokens.js` + test (unit/E2E) per pulizia token scaduti deterministica
+
+- [x] Backend: Spots API (CRUD minimo)
+  - [x] Aggiunte route mancanti: `PUT /spots/:id` e `DELETE /spots/:id` (owner-only + validazione UUID)
+
+> Nota: alcuni test (es. cleanup dei refresh token) usano volontariamente SQLite su file per isolare lo scenario e renderlo deterministico.
+> La suite può comunque essere eseguita tutta su Postgres con `TEST_DB=postgres`.
+
+- [ ] Backend: Avatar utente privato (GDPR-friendly)
+  - [ ] Aggiungere campo `avatar_key` (nullable) su `User`
+  - [ ] Endpoint: `POST /users/me/avatar/presigned-upload` (genera key privata e URL di upload)
+  - [ ] Endpoint: `POST /users/me/avatar/confirm` (fa HEAD sullo storage e salva `avatar_key` solo se l’oggetto esiste)
+  - [ ] Endpoint: `GET /users/me/avatar/presigned-download` (URL firmata a scadenza breve)
+  - [ ] Endpoint: `DELETE /users/me/avatar` (idempotente: rimuove file + azzera `avatar_key`)
+  - [ ] Integrare cancellazione dati utente: eliminare anche l’avatar dallo storage in fase di delete account
+  - [ ] Test: suite dedicata per avatar (happy path + errori + privacy: accesso solo al proprietario)
 
 - [ ] Integrazione con API esterne per meteo e traffico
 - [ ] Implementazione sistema di notifiche push

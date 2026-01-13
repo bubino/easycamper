@@ -39,6 +39,15 @@ function validateUserPayload(body, { forUpdate = false } = {}) {
   return errors;
 }
 
+// Helper: accetta UUID (standard) o numerico legacy
+function isValidUserId(id) {
+  const s = String(id);
+  // UUID v4-ish (accetta anche altre versioni, basta formato)
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const numeric = /^[0-9]+$/;
+  return uuid.test(s) || numeric.test(s);
+}
+
 // POST /users
 router.post('/', async (req, res, next) => {
   try {
@@ -115,11 +124,11 @@ router.get('/confirm-email-change', sensitiveLimiter, async (req, res, next) => 
   }
 });
 
-// GET /users/:id (solo numerici)
+// GET /users/:id (accetta UUID o numerico)
 router.get('/:id', async (req, res, next) => {
   try {
     const id = req.params.id;
-    if (!/^[0-9]+$/.test(String(id))) {
+    if (!isValidUserId(id)) {
       return res.status(400).json({ error: 'ID non valido' });
     }
     const user = await User.findByPk(id);
@@ -134,7 +143,7 @@ router.get('/:id', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const id = req.params.id;
-    if (!/^[0-9]+$/.test(String(id))) {
+    if (!isValidUserId(id)) {
       return res.status(400).json({ error: 'ID non valido' });
     }
 
@@ -161,7 +170,7 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const id = req.params.id;
-    if (!/^[0-9]+$/.test(String(id))) {
+    if (!isValidUserId(id)) {
       return res.status(400).json({ error: 'ID non valido' });
     }
     const n = await User.destroy({ where: { id } });
@@ -176,7 +185,7 @@ router.delete('/:id', async (req, res, next) => {
 router.post('/:id/change-email', sensitiveLimiter, async (req, res, next) => {
   try {
     const id = req.params.id;
-    if (!/^[0-9]+$/.test(String(id))) {
+    if (!isValidUserId(id)) {
       return res.status(400).json({ error: 'ID non valido' });
     }
 

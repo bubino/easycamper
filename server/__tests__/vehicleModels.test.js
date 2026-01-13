@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const db = require('../easycamper/server/models');
+const db = require('../models');
 
 const { VehicleModel } = db;
 

@@ -11,7 +11,24 @@ let sequelize;
 /*───────────────────────────────────────────────────────────────
   1. Dialetto
 ───────────────────────────────────────────────────────────────*/
-if (env === 'test' || env === 'e2e') {
+if ((env === 'test' || env === 'e2e') && (process.env.TEST_DB === 'postgres' || process.env.DATABASE_URL)) {
+  // Test/E2E against Postgres (recommended for production fidelity)
+  const url = process.env.DATABASE_URL;
+  if (url) {
+    sequelize = new Sequelize(url, {
+      dialect: 'postgres',
+      logging: false,
+    });
+  } else {
+    // Fall back to config-based connection when DATABASE_URL is not provided
+    sequelize = new Sequelize(
+      config.database,
+      config.username,
+      config.password,
+      { ...config, dialect: 'postgres', logging: false },
+    );
+  }
+} else if (env === 'test' || env === 'e2e') {
   // SQLite in-memory per test unitari, oppure su file per E2E
   sequelize = new Sequelize({
     dialect: 'sqlite',
@@ -60,10 +77,9 @@ Object.keys(db).forEach(name => {
 /*───────────────────────────────────────────────────────────────
   3. Una sola sync() in ambiente test
 ───────────────────────────────────────────────────────────────*/
-//if (env === 'test') {
-  // Niente force/drop ⇒ i dati restano tra una request e l’altra
-  sequelize.sync();
-//}
+// IMPORTANT: Do NOT call sequelize.sync() at import time.
+// Tests and the app bootstrap should decide when to sync/close.
+// Automatic sync here caused flaky suites and "Database is closed" errors.
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;

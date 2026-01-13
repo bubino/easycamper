@@ -390,6 +390,40 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
 
       // Proviamo a ottenere l'id (il backend ritorna lo spot creato).
       final createdId = (created['id'] ?? created['spot']?['id'])?.toString();
+
+      // Upload foto (best effort): presigned PUT -> public url -> commit su spot
+      if (createdId != null && createdId.isNotEmpty && _photos.isNotEmpty) {
+        final uploadedUrls = <String>[];
+
+        for (final x in _photos) {
+          try {
+            final info = await api.getSpotPhotoUploadUrl(createdId);
+            final key = (info['key'] ?? '').toString();
+            final url = (info['url'] ?? '').toString();
+            if (key.isEmpty || url.isEmpty) continue;
+
+            final bytes = await x.readAsBytes();
+            await api.uploadBytesToPresignedUrl(url, bytes: bytes, contentType: 'image/jpeg');
+
+            final pub = await api.createSpotPhotoPublicUrl(createdId, key: key);
+            final publicUrl = (pub['url'] ?? '').toString();
+            if (publicUrl.isNotEmpty) {
+              uploadedUrls.add(publicUrl);
+            }
+          } catch (_) {
+            // ignore single photo failure
+          }
+        }
+
+        if (uploadedUrls.isNotEmpty) {
+          try {
+            await api.addSpotPhotos(createdId, urls: uploadedUrls);
+          } catch (_) {
+            // ignore commit failure
+          }
+        }
+      }
+
       if (createdId != null && createdId.isNotEmpty) {
         try {
           final detail = await api.fetchSpotById(createdId);

@@ -1,5 +1,6 @@
 class SpotDto {
   final String id;
+  final String? userId;
   final String name;
   final double lat;
   final double lng;
@@ -11,6 +12,7 @@ class SpotDto {
 
   const SpotDto({
     required this.id,
+    this.userId,
     required this.name,
     required this.lat,
     required this.lng,
@@ -43,6 +45,7 @@ class SpotDto {
 
     return SpotDto(
       id: json['id'].toString(),
+      userId: json['userId']?.toString(),
       name: (json['name'] as String?) ?? '',
       lat: (lat ?? 0).toDouble(),
       lng: (lng ?? 0).toDouble(),
@@ -56,6 +59,7 @@ class SpotDto {
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        'userId': userId,
         'name': name,
         'lat': lat,
         'lng': lng,

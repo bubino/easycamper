@@ -3,6 +3,11 @@ const router = require('express').Router();
 const { Op } = require('sequelize');
 const { Spot } = require('../models');
 
+function isValidUuid(id) {
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRe.test(String(id || '').trim());
+}
+
 // GET /spots - lista per mappa con bbox + filtri
 router.get('/', async (req, res, next) => {
   try {
@@ -46,6 +51,7 @@ router.get('/', async (req, res, next) => {
       order: [['ratingAverage', 'DESC']],
       attributes: [
         'id',
+        'userId',
         'name',
         'shortDescription',
         'latitude',
@@ -55,6 +61,7 @@ router.get('/', async (req, res, next) => {
         'ratingCount',
         'services',
         'tags',
+        'photos',
       ],
     });
 
@@ -73,20 +80,72 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const id = String(req.params.id || '').trim();
-    // UUID v4/v1 generic check
-    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRe.test(id)) {
+    if (!isValidUuid(id)) {
       // Avoid DB errors like "invalid input syntax for type uuid"
       return res.status(400).json({ error: 'ID spot non valido' });
     }
 
-    const spot = await Spot.findByPk(id);
+    const spot = await Spot.findByPk(id, {
+      attributes: {
+        exclude: ['updatedAt'],
+      },
+    });
+
     if (!spot) {
       return res.status(404).json({ error: 'Spot non trovato' });
     }
     res.json(spot);
   } catch (err) {
     next(err);
+  }
+});
+
+// POST /spots/:id/photos - collega URL foto allo spot (solo owner)
+router.post('/:id/photos', async (req, res, next) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!isValidUuid(id)) {
+      return res.status(400).json({ error: 'ID spot non valido' });
+    }
+
+    const userId = req.user && req.user.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Utente non autenticato' });
+    }
+
+    const spot = await Spot.findOne({ where: { id, userId } });
+    if (!spot) {
+      return res.status(404).json({ error: 'Spot non trovato' });
+    }
+
+    const body = req.body || {};
+    const urls = [];
+
+    if (typeof body.url === 'string' && body.url.trim().length > 0) {
+      urls.push(body.url.trim());
+    }
+    if (Array.isArray(body.urls)) {
+      for (const u of body.urls) {
+        if (typeof u === 'string' && u.trim().length > 0) {
+          urls.push(u.trim());
+        }
+      }
+    }
+
+    if (urls.length === 0) {
+      return res.status(400).json({ error: 'Nessuna url fornita' });
+    }
+
+    const existing = Array.isArray(spot.photos) ? spot.photos : [];
+    const merged = [...existing];
+    for (const u of urls) {
+      if (!merged.includes(u)) merged.push(u);
+    }
+
+    await spot.update({ photos: merged });
+    return res.status(201).json({ photos: spot.photos });
+  } catch (err) {
+    return next(err);
   }
 });
 
@@ -128,6 +187,63 @@ router.post('/', async (req, res, next) => {
     });
 
     return res.status(201).json(spot);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// PUT /spots/:id - aggiorna spot (solo owner)
+router.put('/:id', async (req, res, next) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!isValidUuid(id)) {
+      return res.status(400).json({ error: 'ID spot non valido' });
+    }
+
+    const userId = req.user && req.user.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Utente non autenticato' });
+    }
+
+    const spot = await Spot.findOne({ where: { id, userId } });
+    if (!spot) {
+      return res.status(404).json({ error: 'Spot non trovato' });
+    }
+
+    const allowed = ['name', 'description', 'shortDescription', 'latitude', 'longitude', 'type', 'services', 'tags', 'openingHours', 'priceInfo'];
+    const updates = {};
+    for (const key of allowed) {
+      if (Object.prototype.hasOwnProperty.call(req.body || {}, key)) {
+        updates[key] = req.body[key];
+      }
+    }
+
+    await spot.update(updates);
+    return res.json(spot);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// DELETE /spots/:id - elimina spot (solo owner)
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!isValidUuid(id)) {
+      return res.status(400).json({ error: 'ID spot non valido' });
+    }
+
+    const userId = req.user && req.user.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Utente non autenticato' });
+    }
+
+    const deleted = await Spot.destroy({ where: { id, userId } });
+    if (!deleted) {
+      return res.status(404).json({ error: 'Spot non trovato' });
+    }
+
+    return res.sendStatus(204);
   } catch (err) {
     return next(err);
   }

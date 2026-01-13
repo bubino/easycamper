@@ -122,7 +122,7 @@ app.use('/api/vehicle-models', vehicleModelsRouter);
 app.use('/api/uploads', uploadsRouter);
 
 // file storage endpoints
-app.use('/api/files', require('./routes/files'));
+app.use('/api/files', authenticate, require('./routes/files'));
 
 // protette
 app.use('/users',             authenticate, require('./routes/users'));

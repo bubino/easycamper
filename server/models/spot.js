@@ -78,6 +78,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         field: 'last_update',
       },
+      photos: {
+        type: DataTypes.JSONB || DataTypes.JSON,
+        allowNull: false,
+        defaultValue: [],
+      },
     },
     {
       sequelize,
