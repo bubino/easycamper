@@ -19,11 +19,11 @@ class StoredAuthSession {
   });
 
   Map<String, dynamic> toJson() => {
-        'accessToken': accessToken,
-        'userId': userId,
-        if (email != null) 'email': email,
-        if (username != null) 'username': username,
-      };
+    'accessToken': accessToken,
+    'userId': userId,
+    if (email != null) 'email': email,
+    if (username != null) 'username': username,
+  };
 
   factory StoredAuthSession.fromJson(Map<String, dynamic> json) {
     return StoredAuthSession(
@@ -37,7 +37,9 @@ class StoredAuthSession {
 
 class AuthStorage {
   static const _keySession = 'auth_session_v1';
-  static const _sessionLifespanMinutes = 12; // durata massima login lato client
+  // Non impostiamo una scadenza client artificiale.
+  // L'access token scade lato server (15m) e viene rinnovato via /auth/refresh (cookie httpOnly).
+  // Mettere una scadenza locale causava logout prematuro ("Token mancante") anche se il refresh era possibile.
 
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
@@ -53,20 +55,13 @@ class AuthStorage {
   }
 
   Future<void> saveSession(AuthResult result) async {
-    final expiresAt = DateTime.now()
-        .add(const Duration(minutes: _sessionLifespanMinutes))
-        .toIso8601String();
-
     final stored = StoredAuthSession(
       accessToken: result.accessToken,
       userId: result.userId,
       email: result.email,
       username: result.username,
     );
-    final payload = {
-      ...stored.toJson(),
-      'expiresAt': expiresAt,
-    };
+    final payload = {...stored.toJson()};
     final json = jsonEncode(payload);
 
     if (_useSecureStorage) {
@@ -93,15 +88,8 @@ class AuthStorage {
       final userId = data['userId'] as String?;
       final email = data['email'] as String?;
       final username = data['username'] as String?;
-      final expiresAtRaw = data['expiresAt'] as String?;
 
-      if (accessToken == null || userId == null || expiresAtRaw == null) {
-        await clearSession();
-        return null;
-      }
-
-      final expiresAt = DateTime.tryParse(expiresAtRaw);
-      if (expiresAt == null || DateTime.now().isAfter(expiresAt)) {
+      if (accessToken == null || userId == null) {
         await clearSession();
         return null;
       }

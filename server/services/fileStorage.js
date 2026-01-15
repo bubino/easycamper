@@ -4,13 +4,16 @@ const path = require('path');
 const { Client } = require('minio');
 const { Readable } = require('stream');
 
-// carica .env o .env.test in base a NODE_ENV
+// carica .env in base a NODE_ENV (allineato a server/app.js)
+const envFile =
+  process.env.NODE_ENV === 'test'
+    ? '.env.test'
+    : process.env.NODE_ENV === 'development'
+      ? '.env.development'
+      : '.env';
+
 require('dotenv').config({
-  path: path.join(
-    __dirname,
-    '..',
-    process.env.NODE_ENV === 'test' ? '.env.test' : '.env.development'
-  )
+  path: path.join(__dirname, '..', envFile),
 });
 
 const isTest = process.env.NODE_ENV === 'test';
@@ -27,6 +30,22 @@ const ACCESS_KEY =
 const SECRET_KEY =
   process.env.S3_SECRET_KEY || process.env.MINIO_SECRET_KEY || 'easyadmin';
 
+// Fail fast in non-test environments if credentials are missing/placeholder.
+if (!isTest) {
+  const bad = (v) =>
+    !v ||
+    v === 'easyadmin' ||
+    v.startsWith('CHANGE_ME__') ||
+    v.includes('YOUR_') ||
+    v.includes('REPLACE_ME');
+
+  if (bad(ACCESS_KEY) || bad(SECRET_KEY)) {
+    throw new Error(
+      'Storage credentials missing/placeholder. Set S3_ACCESS_KEY and S3_SECRET_KEY (Cloudflare R2) as container env vars (recommended) or in server/.env (not recommended).'
+    );
+  }
+}
+
 // For R2 set this to the bucket name (e.g. easycamper)
 const BUCKET =
   process.env.S3_BUCKET || process.env.MINIO_BUCKET || 'easycamper';
@@ -35,6 +54,15 @@ const BUCKET =
 // https://<accountid>.r2.cloudflarestorage.com/<bucket>
 const PUBLIC_BASE_URL =
   process.env.S3_PUBLIC_BASE_URL || process.env.MINIO_PUBLIC_BASE_URL || '';
+
+// Default public base URL (best effort) if S3_PUBLIC_BASE_URL is not set.
+// NOTE: For Cloudflare R2 the r2.cloudflarestorage.com endpoint is the S3 API
+// endpoint and might NOT serve objects publicly. Prefer configuring
+// S3_PUBLIC_BASE_URL to a real public domain (r2.dev / custom domain / worker).
+const DEFAULT_PUBLIC_BASE_URL =
+  process.env.S3_ENDPOINT && BUCKET
+    ? `https://${process.env.S3_ENDPOINT.replace(/^https?:\/\//, '')}/${BUCKET}`
+    : '';
 
 let client;
 let _testStorage = {};
@@ -153,11 +181,19 @@ async function getDownloadUrl(key, expiresSec = 60) {
  * @param {string} key
  */
 function getPublicUrl(key) {
-  if (!PUBLIC_BASE_URL) return '';
-  const base = PUBLIC_BASE_URL.endsWith('/')
-    ? PUBLIC_BASE_URL.slice(0, -1)
-    : PUBLIC_BASE_URL;
+  const baseUrl = (PUBLIC_BASE_URL || DEFAULT_PUBLIC_BASE_URL || '').trim();
+  if (!baseUrl) return '';
+
+  const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   const safeKey = String(key || '').replace(/^\/+/, '');
+
+  // Avoid duplicating bucket path if the configured base already ends with /<bucket>
+  // and key is also prefixed with <bucket>/...
+  const bucketPrefix = `${BUCKET}/`;
+  if (safeKey.startsWith(bucketPrefix) && base.endsWith(`/${BUCKET}`)) {
+    return `${base}/${safeKey.slice(bucketPrefix.length)}`;
+  }
+
   return `${base}/${safeKey}`;
 }
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'api/auth_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api/http_client.dart';
@@ -57,19 +56,15 @@ class _PersonalDataScreenState extends ConsumerState<PersonalDataScreen> {
     }
 
     final userId = session.userId;
-    final token = session.accessToken;
 
     setState(() => _changingEmail = true);
     try {
-      final baseUrl = ref.read(apiHttpClientProvider).baseUrl;
-      final uri = Uri.parse('$baseUrl/users/$userId/change-email');
-      final res = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'newEmail': newEmail}),
+      final api = ref.read(apiHttpClientProvider);
+
+      final res = await api.post<dynamic>(
+        '/users/$userId/change-email',
+        data: {'newEmail': newEmail},
+        authenticated: true,
       );
 
       if (!mounted) return;
@@ -86,17 +81,39 @@ class _PersonalDataScreenState extends ConsumerState<PersonalDataScreen> {
       } else {
         String msg = 'Errore nel cambio email';
         try {
-          final body = jsonDecode(res.body) as Map<String, dynamic>;
-          if (body['error'] is String) msg = body['error'] as String;
+          final data = res.data;
+          if (data is Map<String, dynamic> && data['error'] is String) {
+            msg = data['error'] as String;
+          } else if (data is String && data.isNotEmpty) {
+            // fallback: some endpoints might return plain text
+            msg = data;
+          }
         } catch (_) {}
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg)),
         );
       }
+    } on DioException catch (e) {
+      if (!mounted) return;
+
+      String msg = 'Errore di rete';
+      final status = e.response?.statusCode;
+      final data = e.response?.data;
+
+      if (data is Map<String, dynamic> && data['error'] is String) {
+        msg = data['error'] as String;
+      } else if (status != null) {
+        msg = 'Errore di rete (HTTP $status)';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore di rete: $e')),
+        SnackBar(content: Text('Errore: $e')),
       );
     } finally {
       if (mounted) {

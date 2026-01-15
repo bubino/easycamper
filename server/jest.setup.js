@@ -22,9 +22,11 @@ global.fetch.mockImplementation(async () => ({
 }));
 
 // --- DB bootstrap per test ---
-// Centralizza l'inizializzazione del DB in modo che tutte le suite abbiano le tabelle.
-// Supporta sia SQLite (default) sia Postgres (TEST_DB=postgres).
+// Scelta critica: per coerenza con produzione usiamo Postgres anche nei test.
+// Per usare SQLite (più veloce) impostare esplicitamente TEST_DB=sqlite.
 if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'e2e') {
+  if (!process.env.TEST_DB) process.env.TEST_DB = 'postgres';
+
   if (process.env.TEST_DB === 'postgres' && !process.env.DATABASE_URL) {
     // Default per docker-compose.test.yml
     process.env.DATABASE_URL =
@@ -60,10 +62,6 @@ beforeAll(async () => {
   await db.sequelize.sync({ force: true });
 });
 
-afterAll(async () => {
-  try {
-    await db.sequelize.close();
-  } catch {
-    // ignore
-  }
-});
+// Nota: NON chiudiamo qui la connessione.
+// Molti file di test chiamano già db.sequelize.close()/sequelize.close() in afterAll.
+// Chiudere globalmente qui causa SQLITE_MISUSE/"Database is closed" quando avviene un double-close.

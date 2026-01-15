@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
+import 'package:cookie_jar/cookie_jar.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'auth_state.dart';
@@ -8,15 +12,124 @@ import 'auth_state.dart';
 class ApiHttpClient {
   final String baseUrl;
   final Ref ref;
-  final http.Client _client;
+
+  late final Dio _dio;
+  late final CookieJar _cookieJar;
 
   static DateTime? _refreshCooldownUntil;
+  static Future<bool>? _refreshInFlight;
 
   ApiHttpClient({
     required this.baseUrl,
     required this.ref,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+    Dio? dio,
+    CookieJar? cookieJar,
+  }) {
+    _cookieJar = cookieJar ?? CookieJar();
+    _dio =
+        dio ??
+        Dio(
+          BaseOptions(
+            baseUrl: baseUrl,
+            connectTimeout: const Duration(seconds: 20),
+            receiveTimeout: const Duration(seconds: 30),
+            sendTimeout: const Duration(seconds: 20),
+            // IMPORTANT: cookies are handled by CookieManager.
+            headers: const {'Accept': 'application/json'},
+            // We'll handle errors manually to decide if/when to refresh.
+            validateStatus: (code) => code != null && code >= 100 && code < 600,
+          ),
+        );
+
+    _dio.interceptors.add(CookieManager(_cookieJar));
+
+    // Attach access token to outgoing requests.
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final authenticated = options.extra['authenticated'] != false;
+          if (authenticated) {
+            final authState = ref.read(authControllerProvider);
+            final token = authState.value?.session?.accessToken;
+            if (token != null && token.isNotEmpty) {
+              options.headers['Authorization'] = 'Bearer $token';
+            } else {
+              options.headers.remove('Authorization');
+              if (kDebugMode) {
+                debugPrint(
+                  'HTTP DEBUG: missing accessToken for ${options.method} ${options.uri} (authState=${authState.value?.status})',
+                );
+              }
+            }
+          } else {
+            options.headers.remove('Authorization');
+          }
+
+          // Ensure JSON default when body is Map
+          options.headers.putIfAbsent('Content-Type', () => 'application/json');
+
+          handler.next(options);
+        },
+      ),
+    );
+
+    // Refresh & retry on 401/403.
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onError: (DioException err, handler) async {
+          // Network error -> do not refresh.
+          final response = err.response;
+          final statusCode = response?.statusCode;
+          final req = err.requestOptions;
+
+          final authenticated = req.extra['authenticated'] != false;
+          final alreadyRetried = req.extra['retried'] == true;
+
+          if (!authenticated || alreadyRetried || statusCode == null) {
+            handler.next(err);
+            return;
+          }
+
+          if (!_isAuthError(statusCode)) {
+            handler.next(err);
+            return;
+          }
+
+          // Avoid recursive refresh
+          if (req.path.endsWith('/auth/refresh')) {
+            handler.next(err);
+            return;
+          }
+
+          final ok = await _tryRefreshToken();
+          if (!ok) {
+            await ref.read(authControllerProvider.notifier).logout();
+            handler.next(err);
+            return;
+          }
+
+          try {
+            final retryOptions = _cloneRequestOptions(req);
+            retryOptions.extra['retried'] = true;
+
+            // Set updated Authorization header
+            final newAuthState = ref.read(authControllerProvider);
+            final newToken = newAuthState.value?.session?.accessToken;
+            if (newToken != null && newToken.isNotEmpty) {
+              retryOptions.headers['Authorization'] = 'Bearer $newToken';
+            } else {
+              retryOptions.headers.remove('Authorization');
+            }
+
+            final retryResponse = await _dio.fetch<dynamic>(retryOptions);
+            handler.resolve(retryResponse);
+          } catch (e) {
+            handler.next(err);
+          }
+        },
+      ),
+    );
+  }
 
   bool get _isInRefreshCooldown {
     final until = _refreshCooldownUntil;
@@ -24,173 +137,161 @@ class ApiHttpClient {
     return DateTime.now().isBefore(until);
   }
 
-  void _startRefreshCooldown([Duration duration = const Duration(seconds: 20)]) {
+  void _startRefreshCooldown([
+    Duration duration = const Duration(seconds: 20),
+  ]) {
     _refreshCooldownUntil = DateTime.now().add(duration);
   }
 
-  Future<http.Response> get(
+  bool _isAuthError(int statusCode) => statusCode == 401 || statusCode == 403;
+
+  RequestOptions _cloneRequestOptions(RequestOptions o) {
+    return RequestOptions(
+      path: o.path,
+      method: o.method,
+      baseUrl: o.baseUrl,
+      headers: Map<String, dynamic>.from(o.headers),
+      queryParameters: Map<String, dynamic>.from(o.queryParameters),
+      data: o.data,
+      connectTimeout: o.connectTimeout,
+      sendTimeout: o.sendTimeout,
+      receiveTimeout: o.receiveTimeout,
+      responseType: o.responseType,
+      contentType: o.contentType,
+      validateStatus: o.validateStatus,
+      receiveDataWhenStatusError: o.receiveDataWhenStatusError,
+      followRedirects: o.followRedirects,
+      maxRedirects: o.maxRedirects,
+      requestEncoder: o.requestEncoder,
+      responseDecoder: o.responseDecoder,
+      listFormat: o.listFormat,
+      extra: Map<String, dynamic>.from(o.extra),
+    );
+  }
+
+  /// Generic request
+  Future<Response<T>> request<T>(
     String path, {
-    Map<String, String>? headers,
+    required String method,
     Map<String, dynamic>? queryParameters,
+    dynamic data,
+    Map<String, dynamic>? headers,
     bool authenticated = true,
-  }) async {
-    return _send(
-      'GET',
+    ResponseType? responseType,
+  }) {
+    return _dio.request<T>(
       path,
-      headers: headers,
+      data: data,
       queryParameters: queryParameters,
-      authenticated: authenticated,
+      options: Options(
+        method: method,
+        headers: headers,
+        responseType: responseType,
+        extra: {'authenticated': authenticated},
+      ),
     );
   }
 
-  Future<http.Response> post(
+  Future<Response<T>> get<T>(
     String path, {
-    Map<String, String>? headers,
-    Object? body,
-    bool authenticated = true,
-  }) async {
-    return _send(
-      'POST',
-      path,
-      headers: headers,
-      body: body,
-      authenticated: authenticated,
-    );
-  }
-
-  Future<http.Response> put(
-    String path, {
-    Map<String, String>? headers,
-    Object? body,
-    bool authenticated = true,
-  }) async {
-    return _send(
-      'PUT',
-      path,
-      headers: headers,
-      body: body,
-      authenticated: authenticated,
-    );
-  }
-
-  Future<http.Response> delete(
-    String path, {
-    Map<String, String>? headers,
-    Object? body,
-    bool authenticated = true,
-  }) async {
-    return _send(
-      'DELETE',
-      path,
-      headers: headers,
-      body: body,
-      authenticated: authenticated,
-    );
-  }
-
-  Future<http.Response> _send(
-    String method,
-    String path, {
-    Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
-    Object? body,
+    Map<String, dynamic>? headers,
     bool authenticated = true,
-  }) async {
-    final uri = _buildUri(path, queryParameters);
-    final effectiveHeaders = <String, String>{
-      'Content-Type': 'application/json',
-      ...?headers,
-    };
-
-    String? token;
-    if (authenticated) {
-      final authState = ref.read(authControllerProvider);
-      token = authState.value?.session?.accessToken;
-      if (token != null && token.isNotEmpty) {
-        effectiveHeaders['Authorization'] = 'Bearer $token';
-      }
-    }
-
-    http.Response response = await _execute(method, uri, effectiveHeaders, body);
-
-    if (authenticated && _isAuthError(response.statusCode)) {
-      final refreshed = await _tryRefreshToken();
-      if (refreshed) {
-        final newAuthState = ref.read(authControllerProvider);
-        final newToken = newAuthState.value?.session?.accessToken;
-        if (newToken != null && newToken.isNotEmpty) {
-          effectiveHeaders['Authorization'] = 'Bearer $newToken';
-        } else {
-          effectiveHeaders.remove('Authorization');
-        }
-        response = await _execute(method, uri, effectiveHeaders, body);
-      } else {
-        await ref.read(authControllerProvider.notifier).logout();
-      }
-    }
-
-    return response;
-  }
-
-  Uri _buildUri(String path, Map<String, dynamic>? queryParameters) {
-    final uri = Uri.parse('$baseUrl$path');
-    if (queryParameters == null || queryParameters.isEmpty) {
-      return uri;
-    }
-    return uri.replace(
-      queryParameters: {
-        ...uri.queryParameters,
-        ...queryParameters.map((k, v) => MapEntry(k, v.toString())),
-      },
+    ResponseType? responseType,
+  }) {
+    return request<T>(
+      path,
+      method: 'GET',
+      queryParameters: queryParameters,
+      headers: headers,
+      authenticated: authenticated,
+      responseType: responseType,
     );
   }
 
-  Future<http.Response> _execute(
-    String method,
-    Uri uri,
-    Map<String, String> headers,
-    Object? body,
-  ) async {
-    switch (method.toUpperCase()) {
-      case 'GET':
-        return _client.get(uri, headers: headers);
-      case 'POST':
-        return _client.post(uri, headers: headers, body: body);
-      case 'PUT':
-        return _client.put(uri, headers: headers, body: body);
-      case 'PATCH':
-        return _client.patch(uri, headers: headers, body: body);
-      case 'DELETE':
-        return _client.delete(uri, headers: headers, body: body);
-      default:
-        throw UnsupportedError('Metodo HTTP non supportato: $method');
-    }
+  Future<Response<T>> post<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? headers,
+    bool authenticated = true,
+    ResponseType? responseType,
+  }) {
+    return request<T>(
+      path,
+      method: 'POST',
+      data: data,
+      headers: headers,
+      authenticated: authenticated,
+      responseType: responseType,
+    );
   }
 
-  bool _isAuthError(int statusCode) {
-    return statusCode == 401 || statusCode == 403;
+  Future<Response<T>> put<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? headers,
+    bool authenticated = true,
+    ResponseType? responseType,
+  }) {
+    return request<T>(
+      path,
+      method: 'PUT',
+      data: data,
+      headers: headers,
+      authenticated: authenticated,
+      responseType: responseType,
+    );
+  }
+
+  Future<Response<T>> delete<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? headers,
+    bool authenticated = true,
+    ResponseType? responseType,
+  }) {
+    return request<T>(
+      path,
+      method: 'DELETE',
+      data: data,
+      headers: headers,
+      authenticated: authenticated,
+      responseType: responseType,
+    );
   }
 
   Future<bool> _tryRefreshToken() async {
-    if (_isInRefreshCooldown) {
-      return false;
-    }
+    if (_isInRefreshCooldown) return false;
+
+    // single-flight: if multiple requests 401 together, do one refresh.
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) return inFlight;
+
+    final completer = Completer<bool>();
+    _refreshInFlight = completer.future;
+
     try {
-      final storage = ref.read(authStorageProvider);
       final authApi = ref.read(authApiClientProvider);
+      final storage = ref.read(authStorageProvider);
+
       final refreshResult = await authApi.refreshToken();
       await storage.saveSession(refreshResult);
-      final controller = ref.read(authControllerProvider.notifier);
-      controller.setSessionFromResult(refreshResult);
+      ref
+          .read(authControllerProvider.notifier)
+          .setSessionFromResult(refreshResult);
+
+      completer.complete(true);
       return true;
     } catch (e, st) {
-      // Cooldown so we don't spam /auth/refresh and trigger 429
       _startRefreshCooldown();
       if (kDebugMode) {
         debugPrint('REFRESH DEBUG: errore durante /auth/refresh: $e');
         debugPrint(st.toString());
       }
+      completer.complete(false);
       return false;
+    } finally {
+      _refreshInFlight = null;
     }
   }
 }
@@ -203,8 +304,10 @@ final apiHttpClientProvider = Provider<ApiHttpClient>((ref) {
     envBaseUrl = null;
   }
 
-  final baseUrl = (envBaseUrl != null && envBaseUrl.trim().isNotEmpty)
-      ? envBaseUrl.trim()
-      : kAuthBaseUrl;
+  final baseUrl =
+      (envBaseUrl != null && envBaseUrl.trim().isNotEmpty)
+          ? envBaseUrl.trim()
+          : kAuthBaseUrl;
+
   return ApiHttpClient(baseUrl: baseUrl, ref: ref);
 });

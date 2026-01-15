@@ -5,11 +5,7 @@ class LocationPickerScreen extends StatefulWidget {
   final double? initialLat;
   final double? initialLng;
 
-  const LocationPickerScreen({
-    super.key,
-    this.initialLat,
-    this.initialLng,
-  });
+  const LocationPickerScreen({super.key, this.initialLat, this.initialLng});
 
   @override
   State<LocationPickerScreen> createState() => _LocationPickerScreenState();
@@ -36,11 +32,13 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     final lat = widget.initialLat ?? 45.4642;
     final lng = widget.initialLng ?? 9.19;
 
+    setState(() {
+      _currentLat = lat;
+      _currentLng = lng;
+    });
+
     _mapboxMap!.setCamera(
-      CameraOptions(
-        center: Point(coordinates: Position(lng, lat)),
-        zoom: 13.0,
-      ),
+      CameraOptions(center: Point(coordinates: Position(lng, lat)), zoom: 13.0),
     );
   }
 
@@ -59,10 +57,9 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     if (_currentLat == null || _currentLng == null) return;
 
     if (!mounted) return;
-    Navigator.of(context).pop(<String, double>{
-      'lat': _currentLat!,
-      'lng': _currentLng!,
-    });
+    Navigator.of(
+      context,
+    ).pop(<String, double>{'lat': _currentLat!, 'lng': _currentLng!});
   }
 
   @override
@@ -91,15 +88,31 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           Positioned.fill(
             child: MapWidget(
               cameraOptions: CameraOptions(
-                center: Point(coordinates: Position(9.19, 45.4642)),
-                zoom: 5.0,
+                // Rispetta iniziale se presente.
+                center: Point(
+                  coordinates: Position(
+                    (widget.initialLng ?? 9.19),
+                    (widget.initialLat ?? 45.4642),
+                  ),
+                ),
+                zoom:
+                    widget.initialLat != null && widget.initialLng != null
+                        ? 13.0
+                        : 5.0,
               ),
               styleUri: MapboxStyles.MAPBOX_STREETS,
               onMapCreated: _onMapCreated,
               onCameraChangeListener: (cameraChanged) {
                 final center = cameraChanged.cameraState.center;
-                _currentLat = center.coordinates.lat.toDouble();
-                _currentLng = center.coordinates.lng.toDouble();
+                final lat = center.coordinates.lat.toDouble();
+                final lng = center.coordinates.lng.toDouble();
+
+                // Senza setState, la label in basso resta ferma.
+                if (!mounted) return;
+                setState(() {
+                  _currentLat = lat;
+                  _currentLng = lng;
+                });
               },
             ),
           ),
@@ -107,11 +120,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           const IgnorePointer(
             ignoring: true,
             child: Center(
-              child: Icon(
-                Icons.place,
-                color: Colors.redAccent,
-                size: 36,
-              ),
+              child: Icon(Icons.place, color: Colors.redAccent, size: 36),
             ),
           ),
           // Box informativo in basso con le coordinate correnti

@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api/auth_api.dart';
+import 'api/auth_state.dart';
 
-class PasswordResetScreen extends StatefulWidget {
+class PasswordResetScreen extends ConsumerStatefulWidget {
   const PasswordResetScreen({super.key});
 
   @override
-  State<PasswordResetScreen> createState() => _PasswordResetScreenState();
+  ConsumerState<PasswordResetScreen> createState() =>
+      _PasswordResetScreenState();
 }
 
-class _PasswordResetScreenState extends State<PasswordResetScreen> {
+class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
   final TextEditingController _emailController = TextEditingController();
-  final AuthApiClient _authApi = const AuthApiClient('http://127.0.0.1:3000');
+
+  AuthApiClient get _authApi => ref.read(authApiClientProvider);
+
   bool _isLoading = false;
 
   @override
@@ -27,9 +32,9 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
   Future<void> _handleSubmit() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inserisci la tua email')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Inserisci la tua email')));
       return;
     }
     if (!_isValidEmail(email)) {
@@ -52,9 +57,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
       context.go('/password-reset-sent');
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
       if (mounted) {
         setState(() {
@@ -121,7 +124,9 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Color(0xFF123426)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF123426),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -147,17 +152,19 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                     ),
                   ),
                   onPressed: _isLoading ? null : _handleSubmit,
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text('Invia link di reset'),
+                  child:
+                      _isLoading
+                          ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                          : const Text('Invia link di reset'),
                 ),
               ),
             ),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+// Added for debug logging
+import 'package:flutter/foundation.dart';
+
 import 'api/spot_dto.dart';
 import 'api/spots_api.dart';
 import 'storage/favorites_storage.dart' show favoritesProvider;
@@ -15,7 +18,8 @@ class SpotDetailScreen extends ConsumerWidget {
   const SpotDetailScreen({super.key, required this.spot});
 
   bool _isLikelyOwnedSpot(WidgetRef ref, SpotDto spot) {
-    final sessionUserId = ref.read(authControllerProvider).value?.session?.userId;
+    final sessionUserId =
+        ref.read(authControllerProvider).value?.session?.userId;
     if (sessionUserId == null || sessionUserId.isEmpty) return false;
     final ownerId = spot.userId;
     if (ownerId == null || ownerId.isEmpty) return false;
@@ -30,7 +34,10 @@ class SpotDetailScreen extends ConsumerWidget {
       builder: (ctx) {
         return AlertDialog(
           backgroundColor: const Color(0xFF0d221a),
-          title: const Text('Eliminare lo spot?', style: TextStyle(color: Colors.white)),
+          title: const Text(
+            'Eliminare lo spot?',
+            style: TextStyle(color: Colors.white),
+          ),
           content: const Text(
             'Questa azione non è reversibile.',
             style: TextStyle(color: Colors.white70),
@@ -58,9 +65,9 @@ class SpotDetailScreen extends ConsumerWidget {
       if (!context.mounted) return;
       // Torna indietro e segnala che c'è stato un cambio
       Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Spot eliminato.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Spot eliminato.')));
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,9 +78,7 @@ class SpotDetailScreen extends ConsumerWidget {
 
   Future<void> _openEdit(BuildContext context, WidgetRef ref) async {
     final updated = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => EditSpotScreen(initialSpot: spot),
-      ),
+      MaterialPageRoute(builder: (_) => EditSpotScreen(initialSpot: spot)),
     );
 
     if (updated == true && context.mounted) {
@@ -83,9 +88,7 @@ class SpotDetailScreen extends ConsumerWidget {
         final refreshed = await api.fetchSpotById(spot.id);
         if (!context.mounted) return;
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => SpotDetailScreen(spot: refreshed),
-          ),
+          MaterialPageRoute(builder: (_) => SpotDetailScreen(spot: refreshed)),
         );
       } catch (_) {
         // ignore
@@ -106,120 +109,146 @@ class SpotDetailScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: darkBg,
       body: SafeArea(
-        child: Column(
+        top: false,
+        child: Stack(
           children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SpotHeroImage(spot: spot),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      color: darkBg,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+            Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SpotHeroImage(spot: spot),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          color: darkBg,
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  spot.name,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w700,
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      spot.name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
+                                  if (canManage)
+                                    PopupMenuButton<String>(
+                                      icon: const Icon(
+                                        Icons.more_vert,
+                                        color: Colors.white70,
+                                      ),
+                                      color: const Color(0xFF0d221a),
+                                      onSelected: (value) {
+                                        if (value == 'edit') {
+                                          _openEdit(context, ref);
+                                        } else if (value == 'delete') {
+                                          _confirmAndDelete(context, ref);
+                                        }
+                                      },
+                                      itemBuilder:
+                                          (ctx) => [
+                                            const PopupMenuItem(
+                                              value: 'edit',
+                                              child: Text(
+                                                'Modifica',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                            const PopupMenuItem(
+                                              value: 'delete',
+                                              child: Text(
+                                                'Elimina',
+                                                style: TextStyle(
+                                                  color: Colors.redAccent,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                    ),
+                                  IconButton(
+                                    onPressed: () {
+                                      ref
+                                          .read(favoritesProvider.notifier)
+                                          .toggle(spot.id);
+                                    },
+                                    icon: Icon(
+                                      isFav
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color:
+                                          isFav
+                                              ? Colors.redAccent
+                                              : Colors.white70,
+                                    ),
+                                    tooltip:
+                                        isFav
+                                            ? 'Rimuovi dai preferiti'
+                                            : 'Aggiungi ai preferiti',
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                spot.description,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                  height: 1.5,
                                 ),
                               ),
-                              if (canManage)
-                                PopupMenuButton<String>(
-                                  icon: const Icon(Icons.more_vert, color: Colors.white70),
-                                  color: const Color(0xFF0d221a),
-                                  onSelected: (value) {
-                                    if (value == 'edit') {
-                                      _openEdit(context, ref);
-                                    } else if (value == 'delete') {
-                                      _confirmAndDelete(context, ref);
-                                    }
-                                  },
-                                  itemBuilder: (ctx) => [
-                                    const PopupMenuItem(
-                                      value: 'edit',
-                                      child: Text('Modifica', style: TextStyle(color: Colors.white)),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Text('Elimina', style: TextStyle(color: Colors.redAccent)),
-                                    ),
-                                  ],
+                              const SizedBox(height: 24),
+                              const Text(
+                                'Servizi disponibili',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              IconButton(
-                                onPressed: () {
-                                  ref
-                                      .read(favoritesProvider.notifier)
-                                      .toggle(spot.id);
-                                },
-                                icon: Icon(
-                                  isFav
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                  color: isFav
-                                      ? Colors.redAccent
-                                      : Colors.white70,
-                                ),
-                                tooltip: isFav
-                                    ? 'Rimuovi dai preferiti'
-                                    : 'Aggiungi ai preferiti',
                               ),
+                              const SizedBox(height: 12),
+                              _AmenitiesGrid(services: spot.services),
+                              const SizedBox(height: 24),
+                              const Text(
+                                'Recensioni',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              _ReviewsSection(
+                                spotId: spot.id,
+                                rating: spot.rating,
+                                spotName: spot.name,
+                              ),
+                              const SizedBox(height: 24),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            spot.description,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Servizi disponibili',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          _AmenitiesGrid(services: spot.services),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Recensioni',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          _ReviewsSection(
-                            spotId: spot.id,
-                            rating: spot.rating,
-                            spotName: spot.name,
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-            PositionedBackButton(),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: PositionedBackButton(),
+            ),
           ],
         ),
       ),
@@ -272,8 +301,9 @@ class _EditSpotScreenState extends ConsumerState<EditSpotScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialSpot.name);
-    _descriptionController =
-        TextEditingController(text: widget.initialSpot.description);
+    _descriptionController = TextEditingController(
+      text: widget.initialSpot.description,
+    );
   }
 
   @override
@@ -299,14 +329,14 @@ class _EditSpotScreenState extends ConsumerState<EditSpotScreen> {
 
       if (!mounted) return;
       Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Spot aggiornato.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Spot aggiornato.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Impossibile salvare: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Impossibile salvare: $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -382,17 +412,19 @@ class _EditSpotScreenState extends ConsumerState<EditSpotScreen> {
                       ),
                     ),
                     onPressed: _saving ? null : _save,
-                    child: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Text('Salva'),
+                    child:
+                        _saving
+                            ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                            : const Text('Salva'),
                   ),
                 ),
               ],
@@ -431,33 +463,109 @@ class PositionedBackButton extends StatelessWidget {
   }
 }
 
-class _SpotHeroImage extends StatelessWidget {
+class _SpotHeroImage extends StatefulWidget {
   final SpotDto spot;
 
   const _SpotHeroImage({required this.spot});
 
   @override
+  State<_SpotHeroImage> createState() => _SpotHeroImageState();
+}
+
+class _SpotHeroImageState extends State<_SpotHeroImage> {
+  late final PageController _controller;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final photo = spot.photos.isNotEmpty ? spot.photos.first : null;
-    const placeholder = Icon(
-      Icons.landscape,
-      color: Colors.white54,
-      size: 48,
+    final photos = widget.spot.photos;
+
+    if (kDebugMode) {
+      debugPrint(
+        'SPOT DETAIL DEBUG: spotId=${widget.spot.id} photosLen=${photos.length} photos=${photos.take(2).toList()}',
+      );
+      final bad = photos.where((u) => u.trim().isEmpty).length;
+      if (bad > 0) {
+        debugPrint('SPOT DETAIL DEBUG: WARNING empty photo urls count=$bad');
+      }
+    }
+
+    // Placeholder like the screenshots: dark background with centered icon.
+    const placeholder = Center(
+      child: Icon(Icons.landscape, color: Colors.white54, size: 52),
     );
 
-    return AspectRatio(
-      aspectRatio: 16 / 9,
+    if (photos.isEmpty) {
+      return const SizedBox(
+        height: 320,
+        width: double.infinity,
+        child: DecoratedBox(
+          decoration: BoxDecoration(color: Color(0xFF0d221a)),
+          child: placeholder,
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 320,
+      width: double.infinity,
       child: Stack(
-        fit: StackFit.expand,
         children: [
-          Container(color: const Color(0xFF0d221a)),
-          if (photo == null)
-            const Center(child: placeholder)
-          else
-            Image.network(
-              photo,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Center(child: placeholder),
+          PageView.builder(
+            controller: _controller,
+            itemCount: photos.length,
+            onPageChanged: (i) => setState(() => _index = i),
+            itemBuilder: (context, i) {
+              final url = photos[i];
+              return DecoratedBox(
+                decoration: const BoxDecoration(color: Color(0xFF0d221a)),
+                child: Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return placeholder;
+                  },
+                  errorBuilder: (_, __, ___) => placeholder,
+                ),
+              );
+            },
+          ),
+          if (photos.length > 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 10,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(photos.length, (i) {
+                  final active = i == _index;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: active ? 12 : 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: active ? Colors.white : Colors.white54,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  );
+                }),
+              ),
             ),
         ],
       ),
@@ -482,31 +590,29 @@ class _AmenitiesGrid extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: services.map((label) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0d221a),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFF1b7f6b), width: 0.8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // PNG icons consistent with AddSpotScreen
-              serviceIconWidgetForLabel(label, size: 14),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                ),
+      children:
+          services.map((label) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0d221a),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF1b7f6b), width: 0.8),
               ),
-            ],
-          ),
-        );
-      }).toList(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // PNG icons consistent with AddSpotScreen
+                  serviceIconWidgetForLabel(label, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    label,
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
     );
   }
 }
@@ -530,6 +636,7 @@ class _ReviewsSection extends StatelessWidget {
     final displayRating = rating > 0 ? rating.toStringAsFixed(1) : '--';
 
     Widget buildBar(String label, double fraction, String percent) {
+      final clamped = fraction.isFinite ? fraction.clamp(0.0, 1.0) : 0.0;
       return Row(
         children: [
           SizedBox(
@@ -552,7 +659,7 @@ class _ReviewsSection extends StatelessWidget {
                 ),
                 FractionallySizedBox(
                   alignment: Alignment.centerLeft,
-                  widthFactor: fraction,
+                  widthFactor: clamped,
                   child: Container(
                     height: 6,
                     decoration: BoxDecoration(
@@ -566,7 +673,7 @@ class _ReviewsSection extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           SizedBox(
-            width: 32,
+            width: 40,
             child: Text(
               percent,
               style: const TextStyle(color: Colors.white70, fontSize: 12),
@@ -577,76 +684,173 @@ class _ReviewsSection extends StatelessWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayRating,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: List.generate(5, (index) {
-                    final filled = rating >= index + 1;
-                    return Icon(
-                      Icons.star,
-                      size: 16,
-                      color: filled ? Colors.greenAccent : Colors.white24,
-                    );
-                  }),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  '124 recensioni',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: Column(
-                children: [
-                  buildBar('5', 0.6, '50%'),
-                  const SizedBox(height: 6),
-                  buildBar('4', 0.3, '30%'),
-                  const SizedBox(height: 6),
-                  buildBar('3', 0.1, '10%'),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => SpotReviewsScreen(
-                    spotId: spotId,
-                    spotName: spotName,
+    return Consumer(
+      builder: (context, ref, _) {
+        final api = ref.watch(spotsApiClientProvider);
+
+        return FutureBuilder(
+          future: api.fetchSpotReviews(spotId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Center(
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 ),
               );
-            },
-            child: const Text('Vedi tutte le recensioni'),
-          ),
-        ),
-      ],
+            }
+
+            if (snapshot.hasError) {
+              // Niente 0 “silenzioso”: mostriamo un hint.
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            displayRating,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 34,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: List.generate(5, (index) {
+                              final filled = rating >= index + 1;
+                              return Icon(
+                                Icons.star,
+                                size: 16,
+                                color:
+                                    filled
+                                        ? Colors.greenAccent
+                                        : Colors.white24,
+                              );
+                            }),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Impossibile caricare la distribuzione delle recensioni.',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              );
+            }
+
+            final reviews = snapshot.data ?? const [];
+            int total = reviews.length;
+            final counts = <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+
+            for (final r in reviews) {
+              final v = r.rating;
+              if (v < 1 || v > 5) continue;
+              counts[v] = (counts[v] ?? 0) + 1;
+            }
+
+            String pct(int star) {
+              if (total == 0) return '0%';
+              final p = ((counts[star] ?? 0) * 100 / total).round();
+              return '$p%';
+            }
+
+            double frac(int star) {
+              if (total == 0) return 0.0;
+              return (counts[star] ?? 0) / total;
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayRating,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: List.generate(5, (index) {
+                            final filled = rating >= index + 1;
+                            return Icon(
+                              Icons.star,
+                              size: 16,
+                              color:
+                                  filled ? Colors.greenAccent : Colors.white24,
+                            );
+                          }),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          total == 1 ? '1 recensione' : '$total recensioni',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          buildBar('5', frac(5), pct(5)),
+                          const SizedBox(height: 6),
+                          buildBar('4', frac(4), pct(4)),
+                          const SizedBox(height: 6),
+                          buildBar('3', frac(3), pct(3)),
+                          const SizedBox(height: 6),
+                          buildBar('2', frac(2), pct(2)),
+                          const SizedBox(height: 6),
+                          buildBar('1', frac(1), pct(1)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder:
+                              (_) => SpotReviewsScreen(
+                                spotId: spotId,
+                                spotName: spotName,
+                              ),
+                        ),
+                      );
+                    },
+                    child: const Text('Vedi tutte le recensioni'),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

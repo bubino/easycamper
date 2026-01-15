@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api/vehicle_models_api.dart';
 
-class VehicleModelSearchScreen extends StatefulWidget {
+class VehicleModelSearchScreen extends ConsumerStatefulWidget {
   const VehicleModelSearchScreen({super.key});
 
   @override
-  State<VehicleModelSearchScreen> createState() => _VehicleModelSearchScreenState();
+  ConsumerState<VehicleModelSearchScreen> createState() => _VehicleModelSearchScreenState();
 }
 
-class _VehicleModelSearchScreenState extends State<VehicleModelSearchScreen> {
-  final _api = VehicleModelsApi();
+class _VehicleModelSearchScreenState extends ConsumerState<VehicleModelSearchScreen> {
+  late final VehicleModelsApi _api;
   final _searchController = TextEditingController();
 
   bool _loading = false;
@@ -20,6 +21,7 @@ class _VehicleModelSearchScreenState extends State<VehicleModelSearchScreen> {
   @override
   void initState() {
     super.initState();
+    _api = VehicleModelsApi(ref: ref);
     _load();
   }
 

@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'auth_api.dart';
 import 'auth_storage.dart';
 import 'auth_result.dart';
+import 'http_client.dart';
 
 // Base URL per il backend di autenticazione.
 // - Per simulatore iOS / emulatore Android si può usare http://127.0.0.1:3000
@@ -32,16 +33,12 @@ class AuthState {
   final AuthSession? session;
   final Object? error;
 
-  const AuthState({
-    required this.status,
-    this.session,
-    this.error,
-  });
+  const AuthState({required this.status, this.session, this.error});
 
   const AuthState.unknown() : this(status: AuthStatus.unknown);
   const AuthState.loggedOut() : this(status: AuthStatus.loggedOut);
   const AuthState.loggedIn(AuthSession session)
-      : this(status: AuthStatus.loggedIn, session: session);
+    : this(status: AuthStatus.loggedIn, session: session);
 
   AuthState copyWith({
     AuthStatus? status,
@@ -69,10 +66,13 @@ final authApiClientProvider = Provider<AuthApiClient>((ref) {
     envBaseUrl = null;
   }
 
-  final baseUrl = (envBaseUrl != null && envBaseUrl.trim().isNotEmpty)
-      ? envBaseUrl.trim()
-      : kAuthBaseUrl;
-  return AuthApiClient(baseUrl);
+  final baseUrl =
+      (envBaseUrl != null && envBaseUrl.trim().isNotEmpty)
+          ? envBaseUrl.trim()
+          : kAuthBaseUrl;
+
+  final httpClient = ref.read(apiHttpClientProvider);
+  return AuthApiClient(baseUrl, httpClient);
 });
 
 class AuthController extends AsyncNotifier<AuthState> {
@@ -93,10 +93,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     );
   }
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> login({required String email, required String password}) async {
     state = const AsyncLoading();
     final api = ref.read(authApiClientProvider);
     final storage = ref.read(authStorageProvider);
@@ -173,6 +170,8 @@ class AuthController extends AsyncNotifier<AuthState> {
   }
 }
 
-final authControllerProvider = AsyncNotifierProvider<AuthController, AuthState>(() {
-  return AuthController();
-});
+final authControllerProvider = AsyncNotifierProvider<AuthController, AuthState>(
+  () {
+    return AuthController();
+  },
+);

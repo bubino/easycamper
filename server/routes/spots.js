@@ -32,6 +32,22 @@ function safeString(v) {
   return typeof v === 'string' ? v.trim() : '';
 }
 
+function parsePhotos(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const v of raw) {
+    if (typeof v !== 'string') continue;
+    const s = v.trim();
+    if (!s) continue;
+    // allow https only (R2 public) - basic hardening
+    if (!/^https:\/\//i.test(s)) continue;
+    out.push(s);
+    if (out.length >= 2) break;
+  }
+  // unique
+  return [...new Set(out)];
+}
+
 // GET /spots - lista per mappa con bbox + filtri
 router.get('/', async (req, res, next) => {
   try {
@@ -175,18 +191,26 @@ router.post('/:id/photos', async (req, res, next) => {
 
 // POST /spots - crea un nuovo spot
 router.post('/', async (req, res, next) => {
+  const t = await sequelize.transaction();
   try {
-    const { name, description, latitude, longitude, type, services, rating } = req.body || {};
+    const { name, description, latitude, longitude, type, services, rating } =
+      req.body || {};
 
     if (!name || latitude == null || longitude == null) {
-      return res.status(400).json({ error: 'name, latitude e longitude sono obbligatori' });
+      await t.rollback();
+      return res
+        .status(400)
+        .json({ error: 'name, latitude e longitude sono obbligatori' });
     }
 
     let parsedRating = null;
     if (rating != null) {
       const r = Number(rating);
       if (!Number.isFinite(r) || r < 1 || r > 5) {
-        return res.status(400).json({ error: 'rating deve essere un numero tra 1 e 5' });
+        await t.rollback();
+        return res
+          .status(400)
+          .json({ error: 'rating deve essere un numero tra 1 e 5' });
       }
       parsedRating = r;
     }
@@ -194,24 +218,50 @@ router.post('/', async (req, res, next) => {
     // userId impostato dal middleware authenticate in app.js
     const userId = req.user && req.user.id;
     if (!userId) {
+      await t.rollback();
       return res.status(401).json({ error: 'Utente non autenticato' });
     }
 
-    const spot = await Spot.create({
-      userId,
-      name,
-      description,
-      latitude,
-      longitude,
-      type,
-      services,
-      ...(parsedRating != null
-        ? { ratingAverage: parsedRating, ratingCount: 1 }
-        : {}),
-    });
+    const spot = await Spot.create(
+      {
+        userId,
+        name,
+        description,
+        latitude,
+        longitude,
+        type,
+        services,
+      },
+      { transaction: t },
+    );
 
-    return res.status(201).json(spot);
+    // Se l'utente ha fornito una valutazione in creazione, trasformiamola in una
+    // prima recensione dell'owner usando la descrizione come commento.
+    // (solo per chi inserisce il POI)
+    if (parsedRating != null) {
+      const comment = safeString(description);
+      await SpotReview.findOrCreate({
+        where: { spotId: spot.id, userId },
+        defaults: {
+          rating: parsedRating,
+          comment: comment || null,
+          photos: [],
+        },
+        transaction: t,
+      });
+
+      await recomputeSpotRating(spot.id, t);
+    }
+
+    await t.commit();
+
+    // Ritorniamo lo spot aggiornato (con ratingAverage/ratingCount coerenti)
+    const fresh = await Spot.findByPk(spot.id);
+    return res.status(201).json(fresh);
   } catch (err) {
+    try {
+      await t.rollback();
+    } catch (_) {}
     return next(err);
   }
 });
@@ -332,16 +382,17 @@ router.post('/:id/reviews', async (req, res, next) => {
     }
 
     const comment = safeString(req.body?.comment);
+    const photos = parsePhotos(req.body?.photos);
 
     // upsert: l'utente può avere massimo 1 review per spot (vincolo unique)
     const [review, created] = await SpotReview.findOrCreate({
       where: { spotId, userId },
-      defaults: { rating, comment: comment || null },
+      defaults: { rating, comment: comment || null, photos },
       transaction: t,
     });
 
     if (!created) {
-      await review.update({ rating, comment: comment || null }, { transaction: t });
+      await review.update({ rating, comment: comment || null, photos }, { transaction: t });
     }
 
     await recomputeSpotRating(spotId, t);

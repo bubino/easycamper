@@ -13,6 +13,11 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
+  # Networking (Dio + cookie jar)
+  dio: ^5.7.0
+  cookie_jar: ^4.0.8
+  dio_cookie_manager: ^3.1.1
+
   # Firebase
   firebase_core: ^4.2.1
   firebase_auth: ^6.1.2

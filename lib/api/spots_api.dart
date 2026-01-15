@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart' as dio;
 
 import 'http_client.dart';
 import 'spot_dto.dart';
@@ -51,7 +52,8 @@ class SpotMarkerData {
       type: json['type'] as String?,
       services: _parseServices(json['services']),
       rating: ((json['ratingAverage'] ?? json['rating']) as num?)?.toDouble(),
-      photos: (json['photos'] as List<dynamic>?)
+      photos:
+          (json['photos'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           const [],
@@ -81,7 +83,8 @@ class SpotCreateDto {
   final double latitude;
   final double longitude;
   final String type; // es. 'area_sosta'
-  final Map<String, bool> services; // chiavi allineate al backend (es. "Elettricità")
+  final Map<String, bool>
+  services; // chiavi allineate al backend (es. "Elettricità")
 
   /// Valutazione iniziale fornita dall'utente (1..5). Facoltativa.
   final int? rating;
@@ -97,14 +100,14 @@ class SpotCreateDto {
   });
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'description': description,
-        'latitude': latitude,
-        'longitude': longitude,
-        'type': type,
-        'services': services,
-        if (rating != null) 'rating': rating,
-      };
+    'name': name,
+    'description': description,
+    'latitude': latitude,
+    'longitude': longitude,
+    'type': type,
+    'services': services,
+    if (rating != null) 'rating': rating,
+  };
 }
 
 class SpotUpdateDto {
@@ -127,14 +130,14 @@ class SpotUpdateDto {
   });
 
   Map<String, dynamic> toJson() => {
-        if (name != null) 'name': name,
-        if (description != null) 'description': description,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
-        if (type != null) 'type': type,
-        if (services != null) 'services': services,
-        if (rating != null) 'rating': rating,
-      };
+    if (name != null) 'name': name,
+    if (description != null) 'description': description,
+    if (latitude != null) 'latitude': latitude,
+    if (longitude != null) 'longitude': longitude,
+    if (type != null) 'type': type,
+    if (services != null) 'services': services,
+    if (rating != null) 'rating': rating,
+  };
 }
 
 class SpotReviewDto {
@@ -143,6 +146,7 @@ class SpotReviewDto {
   final String? username;
   final int rating;
   final String? comment;
+  final List<String> photos;
   final DateTime? createdAt;
 
   const SpotReviewDto({
@@ -151,19 +155,27 @@ class SpotReviewDto {
     this.username,
     required this.rating,
     this.comment,
+    this.photos = const [],
     this.createdAt,
   });
 
   factory SpotReviewDto.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>?;
     final createdAtRaw = json['createdAt'] ?? json['created_at'];
+    final photosRaw = json['photos'];
+    final photos =
+        (photosRaw is List)
+            ? photosRaw.map((e) => e.toString()).toList()
+            : const <String>[];
     return SpotReviewDto(
       id: json['id'].toString(),
       userId: json['userId']?.toString() ?? json['user_id']?.toString() ?? '',
       username: user?['username']?.toString() ?? user?['email']?.toString(),
       rating: (json['rating'] as num).toInt(),
       comment: json['comment']?.toString(),
-      createdAt: createdAtRaw is String ? DateTime.tryParse(createdAtRaw) : null,
+      photos: photos,
+      createdAt:
+          createdAtRaw is String ? DateTime.tryParse(createdAtRaw) : null,
     );
   }
 }
@@ -206,7 +218,7 @@ class SpotsApiClient {
     }
 
     // Allineato a server/app.js: app.use('/spots', authenticate, require('./routes/spots'));
-    final resp = await _http.get(
+    final resp = await _http.get<dynamic>(
       '/spots',
       queryParameters: query,
       authenticated: true,
@@ -214,15 +226,22 @@ class SpotsApiClient {
 
     if (resp.statusCode != 200) {
       if (kDebugMode) {
-        final snippet = resp.body.length > 300 ? resp.body.substring(0, 300) : resp.body;
+        final raw = resp.data;
+        final text = raw == null ? '' : raw.toString();
+        final snippet = text.length > 300 ? text.substring(0, 300) : text;
         debugPrint('SPOTS API DEBUG: status=${resp.statusCode} body=$snippet');
       }
       throw Exception('Errore caricamento spots: ${resp.statusCode}');
     }
 
-    final data = jsonDecode(resp.body) as Map<String, dynamic>;
+    final data =
+        (resp.data is Map)
+            ? Map<String, dynamic>.from(resp.data as Map)
+            : jsonDecode(resp.data?.toString() ?? '{}') as Map<String, dynamic>;
     if (kDebugMode) {
-      debugPrint('SPOTS API DEBUG: response keys=${data.keys.toList()} total=${data['total']}');
+      debugPrint(
+        'SPOTS API DEBUG: response keys=${data.keys.toList()} total=${data['total']}',
+      );
     }
     final spotsJson = data['spots'] as List<dynamic>? ?? const [];
 
@@ -235,9 +254,10 @@ class SpotsApiClient {
     try {
       final raw = await rootBundle.loadString('mock_data/spot.json');
       final List<dynamic> jsonList = jsonDecode(raw) as List<dynamic>;
-      final match = jsonList
-          .cast<Map<String, dynamic>>()
-          .firstWhere((e) => e['id'].toString() == id, orElse: () => {});
+      final match = jsonList.cast<Map<String, dynamic>>().firstWhere(
+        (e) => e['id'].toString() == id,
+        orElse: () => {},
+      );
       if (match.isEmpty) return null;
       return SpotDto.fromJson(match);
     } catch (_) {
@@ -249,9 +269,9 @@ class SpotsApiClient {
     final cached = _spotCache[id];
     if (cached != null) return cached;
 
-    http.Response? resp;
+    dio.Response<dynamic>? resp;
     try {
-      resp = await _http.get('/spots/$id', authenticated: true);
+      resp = await _http.get<dynamic>('/spots/$id', authenticated: true);
     } catch (_) {
       // ignore
     }
@@ -273,7 +293,8 @@ class SpotsApiClient {
       throw Exception('Errore caricamento spot $id: ${resp.statusCode}');
     }
 
-    final body = jsonDecode(resp.body);
+    final dynamic body =
+        resp.data is String ? jsonDecode(resp.data as String) : resp.data;
 
     Map<String, dynamic> json;
     if (body is Map<String, dynamic>) {
@@ -292,18 +313,20 @@ class SpotsApiClient {
   }
 
   Future<SpotDto> updateSpot(String id, SpotUpdateDto dto) async {
-    final resp = await _http.put(
+    final resp = await _http.put<dynamic>(
       '/spots/$id',
-      body: jsonEncode(dto.toJson()),
+      data: dto.toJson(),
       headers: const {'Content-Type': 'application/json'},
       authenticated: true,
     );
 
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+    final sc = resp.statusCode ?? 0;
+    if (sc < 200 || sc >= 300) {
       throw Exception('Errore aggiornamento spot: ${resp.statusCode}');
     }
 
-    final body = jsonDecode(resp.body);
+    final dynamic body =
+        resp.data is String ? jsonDecode(resp.data as String) : resp.data;
     Map<String, dynamic> json;
     if (body is Map<String, dynamic> && body['spot'] is Map<String, dynamic>) {
       json = body['spot'] as Map<String, dynamic>;
@@ -319,12 +342,10 @@ class SpotsApiClient {
   }
 
   Future<void> deleteSpot(String id) async {
-    final resp = await _http.delete(
-      '/spots/$id',
-      authenticated: true,
-    );
+    final resp = await _http.delete<dynamic>('/spots/$id', authenticated: true);
 
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+    final sc = resp.statusCode ?? 0;
+    if (sc < 200 || sc >= 300) {
       throw Exception('Errore eliminazione spot: ${resp.statusCode}');
     }
 
@@ -332,18 +353,22 @@ class SpotsApiClient {
   }
 
   Future<Map<String, dynamic>> createSpot(SpotCreateDto dto) async {
-    final resp = await _http.post(
+    final resp = await _http.post<dynamic>(
       '/spots',
-      body: jsonEncode(dto.toJson()),
+      data: dto.toJson(),
       headers: const {'Content-Type': 'application/json'},
       authenticated: true,
     );
 
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+    final sc = resp.statusCode ?? 0;
+    if (sc < 200 || sc >= 300) {
       throw Exception('Errore creazione spot: ${resp.statusCode}');
     }
 
-    final created = jsonDecode(resp.body) as Map<String, dynamic>;
+    final created =
+        (resp.data is Map)
+            ? Map<String, dynamic>.from(resp.data as Map)
+            : jsonDecode(resp.data?.toString() ?? '{}') as Map<String, dynamic>;
 
     // best-effort: se il backend ritorna i campi completi spot, mettili in cache
     try {
@@ -361,7 +386,10 @@ class SpotsApiClient {
             authenticated: true,
           );
           if (detailResp.statusCode == 200) {
-            final detailJson = jsonDecode(detailResp.body);
+            final dynamic detailJson =
+                detailResp.data is String
+                    ? jsonDecode(detailResp.data as String)
+                    : detailResp.data;
             if (detailJson is Map<String, dynamic>) {
               final spot = SpotDto.fromJson(detailJson);
               _cacheSpot(spot);
@@ -379,44 +407,68 @@ class SpotsApiClient {
   }
 
   Future<Map<String, dynamic>> getSpotPhotoUploadUrl(String spotId) async {
-    final resp = await _http.get(
+    final resp = await _http.get<dynamic>(
+      // Backend mounts uploads router under /api/uploads
       '/api/uploads/spots/$spotId/photo-url',
       authenticated: true,
     );
     if (resp.statusCode != 200) {
       throw Exception('Errore presigned upload url: ${resp.statusCode}');
     }
-    return jsonDecode(resp.body) as Map<String, dynamic>;
+    final out = (resp.data is Map)
+        ? Map<String, dynamic>.from(resp.data as Map)
+        : jsonDecode(resp.data?.toString() ?? '{}') as Map<String, dynamic>;
+
+    if (kDebugMode) {
+      debugPrint(
+        'UPLOAD DEBUG (spot photo-url): spotId=$spotId status=${resp.statusCode} key=${out['key']} url=${(out['url']?.toString() ?? '').substring(0, ((out['url']?.toString() ?? '').length > 80) ? 80 : (out['url']?.toString() ?? '').length)}',
+      );
+    }
+
+    return out;
   }
 
   Future<Map<String, dynamic>> createSpotPhotoPublicUrl(
     String spotId, {
     required String key,
   }) async {
-    final resp = await _http.post(
+    final resp = await _http.post<dynamic>(
+      // Backend mounts uploads router under /api/uploads
       '/api/uploads/spots/$spotId/photo',
       authenticated: true,
       headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'key': key}),
+      data: {'key': key},
     );
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+    final sc = resp.statusCode ?? 0;
+    if (sc < 200 || sc >= 300) {
       throw Exception('Errore creazione public url: ${resp.statusCode}');
     }
-    return jsonDecode(resp.body) as Map<String, dynamic>;
+    final out = (resp.data is Map)
+        ? Map<String, dynamic>.from(resp.data as Map)
+        : jsonDecode(resp.data?.toString() ?? '{}') as Map<String, dynamic>;
+
+    if (kDebugMode) {
+      debugPrint(
+        'UPLOAD DEBUG (spot photo public): spotId=$spotId status=${resp.statusCode} key=$key url=${out['url']}',
+      );
+    }
+
+    return out;
   }
 
   Future<void> addSpotPhotos(
     String spotId, {
     required List<String> urls,
   }) async {
-    final resp = await _http.post(
+    final resp = await _http.post<dynamic>(
       '/spots/$spotId/photos',
       authenticated: true,
       headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'urls': urls}),
+      data: {'urls': urls},
     );
 
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+    final sc = resp.statusCode ?? 0;
+    if (sc < 200 || sc >= 300) {
       throw Exception('Errore commit foto spot: ${resp.statusCode}');
     }
 
@@ -452,7 +504,18 @@ class SpotsApiClient {
     String contentType = 'image/jpeg',
   }) async {
     final uri = Uri.parse(presignedUrl);
-    final resp = await http.put(uri, headers: {'Content-Type': contentType}, body: bytes);
+    final resp = await http.put(
+      uri,
+      headers: {'Content-Type': contentType},
+      body: bytes,
+    );
+
+    if (kDebugMode) {
+      debugPrint(
+        'UPLOAD DEBUG (PUT presigned): status=${resp.statusCode} bytes=${bytes.length} url=${presignedUrl.substring(0, presignedUrl.length > 100 ? 100 : presignedUrl.length)}',
+      );
+    }
+
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw Exception('Errore PUT presigned upload: ${resp.statusCode}');
     }
@@ -460,14 +523,75 @@ class SpotsApiClient {
 }
 
 extension SpotsApiReviews on SpotsApiClient {
+  Future<Map<String, dynamic>> getSpotReviewPhotoUploadUrl(
+    String spotId,
+  ) async {
+    final resp = await _http.get<dynamic>(
+      // Backend mounts uploads router under /api/uploads
+      '/api/uploads/spots/$spotId/reviews/photo-url',
+      authenticated: true,
+    );
+    if (resp.statusCode != 200) {
+      throw Exception('Errore presigned upload url review: ${resp.statusCode}');
+    }
+    final out = (resp.data is Map)
+        ? Map<String, dynamic>.from(resp.data as Map)
+        : jsonDecode(resp.data?.toString() ?? '{}') as Map<String, dynamic>;
+
+    if (kDebugMode) {
+      debugPrint(
+        'UPLOAD DEBUG (review photo-url): spotId=$spotId status=${resp.statusCode} key=${out['key']} url=${(out['url']?.toString() ?? '').substring(0, ((out['url']?.toString() ?? '').length > 80) ? 80 : (out['url']?.toString() ?? '').length)}',
+      );
+    }
+
+    return out;
+  }
+
+  Future<Map<String, dynamic>> createSpotReviewPhotoPublicUrl(
+    String spotId, {
+    required String key,
+  }) async {
+    final resp = await _http.post<dynamic>(
+      // Backend mounts uploads router under /api/uploads
+      '/api/uploads/spots/$spotId/reviews/photo',
+      authenticated: true,
+      headers: const {'Content-Type': 'application/json'},
+      data: {'key': key},
+    );
+    final sc = resp.statusCode ?? 0;
+    if (sc < 200 || sc >= 300) {
+      throw Exception('Errore creazione public url review: ${resp.statusCode}');
+    }
+    final out = (resp.data is Map)
+        ? Map<String, dynamic>.from(resp.data as Map)
+        : jsonDecode(resp.data?.toString() ?? '{}') as Map<String, dynamic>;
+
+    if (kDebugMode) {
+      debugPrint(
+        'UPLOAD DEBUG (review photo public): spotId=$spotId status=${resp.statusCode} key=$key url=${out['url']}',
+      );
+    }
+
+    return out;
+  }
+
   Future<List<SpotReviewDto>> fetchSpotReviews(String spotId) async {
-    final resp = await _http.get('/spots/$spotId/reviews', authenticated: true);
+    final resp = await _http.get<dynamic>(
+      '/spots/$spotId/reviews',
+      authenticated: true,
+    );
     if (resp.statusCode != 200) {
       throw Exception('Errore caricamento recensioni: ${resp.statusCode}');
     }
-    final body = jsonDecode(resp.body);
-    final list = (body is Map<String, dynamic> ? body['reviews'] : null) as List<dynamic>? ?? const [];
-    return list.map((e) => SpotReviewDto.fromJson(e as Map<String, dynamic>)).toList();
+    final dynamic body =
+        resp.data is String ? jsonDecode(resp.data as String) : resp.data;
+    final list =
+        (body is Map<String, dynamic> ? body['reviews'] : null)
+            as List<dynamic>? ??
+        const [];
+    return list
+        .map((e) => SpotReviewDto.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Crea o aggiorna la recensione dell'utente corrente per lo spot.
@@ -475,15 +599,17 @@ extension SpotsApiReviews on SpotsApiClient {
     String spotId, {
     required int rating,
     String? comment,
+    List<String>? photos,
   }) async {
-    final resp = await _http.post(
+    final resp = await _http.post<dynamic>(
       '/spots/$spotId/reviews',
       authenticated: true,
       headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'rating': rating, 'comment': comment}),
+      data: {'rating': rating, 'comment': comment, 'photos': photos},
     );
 
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+    final sc = resp.statusCode ?? 0;
+    if (sc < 200 || sc >= 300) {
       throw Exception('Errore invio recensione: ${resp.statusCode}');
     }
 
@@ -502,9 +628,10 @@ final spotsApiClientProvider = Provider<SpotsApiClient>((ref) {
     envBaseUrl = null;
   }
 
-  final baseUrl = (envBaseUrl != null && envBaseUrl.trim().isNotEmpty)
-      ? envBaseUrl.trim()
-      : kAuthBaseUrl;
+  final baseUrl =
+      (envBaseUrl != null && envBaseUrl.trim().isNotEmpty)
+          ? envBaseUrl.trim()
+          : kAuthBaseUrl;
 
   final httpClient = ref.read(apiHttpClientProvider);
   return SpotsApiClient(baseUrl, httpClient);

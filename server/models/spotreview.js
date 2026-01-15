@@ -46,6 +46,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      photos: {
+        type: DataTypes.JSONB || DataTypes.JSON,
+        allowNull: false,
+        defaultValue: [],
+      },
     },
     {
       sequelize,

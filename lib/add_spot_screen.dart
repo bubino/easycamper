@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -58,7 +59,9 @@ String? serviceIconAssetForLabel(String label) {
           !norm.contains('grey'))) {
     return 'assets/icons/markers/service_point_eau.png';
   }
-  if (norm == 'black_water' || norm.contains('nere') || norm.contains('black')) {
+  if (norm == 'black_water' ||
+      norm.contains('nere') ||
+      norm.contains('black')) {
     return 'assets/icons/markers/service_eau_noire.png';
   }
   if (norm == 'grey_water' ||
@@ -85,18 +88,27 @@ String? serviceIconAssetForLabel(String label) {
       norm.contains('pattum')) {
     return 'assets/icons/markers/service_poubelle.png';
   }
-  if (norm == 'toilet_public' || norm.contains('bagni') || norm.contains('wc')) {
+  if (norm == 'toilet_public' ||
+      norm.contains('bagni') ||
+      norm.contains('wc')) {
     return 'assets/icons/markers/service_wc_public.png';
   }
 
   return null;
 }
 
-Widget serviceIconWidgetForLabel(String label,
-    {double size = 18, Color? tint}) {
+Widget serviceIconWidgetForLabel(
+  String label, {
+  double size = 18,
+  Color? tint,
+}) {
   final asset = serviceIconAssetForLabel(label);
   if (asset == null) {
-    return Icon(_iconForAmenity(label), size: size, color: tint ?? Colors.white70);
+    return Icon(
+      _iconForAmenity(label),
+      size: size,
+      color: tint ?? Colors.white70,
+    );
   }
   return Image.asset(asset, width: size, height: size);
 }
@@ -187,7 +199,8 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
     _previewAnnoMgr ??= await map.annotations.createPointAnnotationManager();
     await _previewAnnoMgr!.deleteAll();
 
-    final bytes = await _loadMarkerBytes(_assetForSelectedType()) ??
+    final bytes =
+        await _loadMarkerBytes(_assetForSelectedType()) ??
         await _loadMarkerBytes('assets/icons/markers/icon_p.png');
 
     await _previewAnnoMgr!.create(
@@ -243,7 +256,9 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Errore durante la selezione delle foto.')),
+        const SnackBar(
+          content: Text('Errore durante la selezione delle foto.'),
+        ),
       );
     }
   }
@@ -301,7 +316,9 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Impossibile ottenere la posizione attuale: $e')),
+        SnackBar(
+          content: Text('Impossibile ottenere la posizione attuale: $e'),
+        ),
       );
     }
   }
@@ -309,10 +326,8 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
   Future<void> _chooseLocationOnMap() async {
     final result = await Navigator.of(context).push<Map<String, double>>(
       MaterialPageRoute(
-        builder: (_) => LocationPickerScreen(
-          initialLat: _lat,
-          initialLng: _lng,
-        ),
+        builder:
+            (_) => LocationPickerScreen(initialLat: _lat, initialLng: _lng),
       ),
     );
 
@@ -352,7 +367,9 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_lat == null || _lng == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seleziona una posizione o usa la tua posizione.')),
+        const SnackBar(
+          content: Text('Seleziona una posizione o usa la tua posizione.'),
+        ),
       );
       return;
     }
@@ -373,9 +390,10 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
 
       final dto = SpotCreateDto(
         name: _nameController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
+        description:
+            _descriptionController.text.trim().isEmpty
+                ? null
+                : _descriptionController.text.trim(),
         latitude: _lat!,
         longitude: _lng!,
         type: _selectedType,
@@ -391,36 +409,108 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
       // Proviamo a ottenere l'id (il backend ritorna lo spot creato).
       final createdId = (created['id'] ?? created['spot']?['id'])?.toString();
 
+      if (kDebugMode) {
+        debugPrint(
+          'ADD SPOT DEBUG: created keys=${created.keys.toList()} createdId=$createdId photos=${_photos.length}',
+        );
+      }
+
       // Upload foto (best effort): presigned PUT -> public url -> commit su spot
       if (createdId != null && createdId.isNotEmpty && _photos.isNotEmpty) {
         final uploadedUrls = <String>[];
 
         for (final x in _photos) {
           try {
+            if (kDebugMode) {
+              debugPrint('ADD SPOT DEBUG: uploading photo path=${x.path}');
+            }
+
             final info = await api.getSpotPhotoUploadUrl(createdId);
             final key = (info['key'] ?? '').toString();
             final url = (info['url'] ?? '').toString();
+
+            if (kDebugMode) {
+              debugPrint(
+                'ADD SPOT DEBUG: presigned received keyEmpty=${key.isEmpty} urlEmpty=${url.isEmpty}',
+              );
+            }
+
             if (key.isEmpty || url.isEmpty) continue;
 
             final bytes = await x.readAsBytes();
-            await api.uploadBytesToPresignedUrl(url, bytes: bytes, contentType: 'image/jpeg');
+            if (kDebugMode) {
+              debugPrint('ADD SPOT DEBUG: photo bytes=${bytes.length}');
+            }
+
+            await api.uploadBytesToPresignedUrl(
+              url,
+              bytes: bytes,
+              contentType: 'image/jpeg',
+            );
 
             final pub = await api.createSpotPhotoPublicUrl(createdId, key: key);
             final publicUrl = (pub['url'] ?? '').toString();
+
+            if (kDebugMode) {
+              debugPrint(
+                'ADD SPOT DEBUG: public url empty=${publicUrl.isEmpty} publicUrl=$publicUrl',
+              );
+            }
+
             if (publicUrl.isNotEmpty) {
               uploadedUrls.add(publicUrl);
             }
-          } catch (_) {
+          } catch (e, st) {
+            if (kDebugMode) {
+              debugPrint('ADD SPOT DEBUG: single photo upload failed: $e');
+              debugPrint(st.toString());
+            }
             // ignore single photo failure
+          }
+        }
+
+        if (kDebugMode) {
+          debugPrint('ADD SPOT DEBUG: uploadedUrls=${uploadedUrls.length}');
+          if (uploadedUrls.isNotEmpty) {
+            debugPrint(
+              'ADD SPOT DEBUG: first uploaded url=${uploadedUrls.first}',
+            );
           }
         }
 
         if (uploadedUrls.isNotEmpty) {
           try {
             await api.addSpotPhotos(createdId, urls: uploadedUrls);
-          } catch (_) {
+            if (kDebugMode) {
+              debugPrint('ADD SPOT DEBUG: addSpotPhotos OK');
+            }
+
+            // Immediate verify: re-fetch and check spot.photos returned by backend
+            try {
+              final verify = await api.fetchSpotById(createdId);
+              if (kDebugMode) {
+                debugPrint(
+                  'ADD SPOT DEBUG: verify fetch photos len=${verify.photos.length} photos=${verify.photos.take(2).toList()}',
+                );
+              }
+            } catch (e) {
+              if (kDebugMode) {
+                debugPrint('ADD SPOT DEBUG: verify fetch failed: $e');
+              }
+            }
+          } catch (e, st) {
+            if (kDebugMode) {
+              debugPrint('ADD SPOT DEBUG: addSpotPhotos failed: $e');
+              debugPrint(st.toString());
+            }
             // ignore commit failure
           }
+        }
+      } else {
+        if (kDebugMode) {
+          debugPrint(
+            'ADD SPOT DEBUG: skip upload (createdIdValid=${createdId != null && createdId.isNotEmpty} photos=${_photos.length})',
+          );
         }
       }
 
@@ -431,9 +521,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
           // Chiudi AddSpotScreen e apri il dettaglio con i dati reali (rating incluso).
           Navigator.of(context).pop(true);
           Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => SpotDetailScreen(spot: detail),
-            ),
+            MaterialPageRoute(builder: (_) => SpotDetailScreen(spot: detail)),
           );
           return;
         } catch (_) {
@@ -514,7 +602,10 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
     );
   }
 
-  Widget _ratingStars({required int value, required ValueChanged<int> onChanged}) {
+  Widget _ratingStars({
+    required int value,
+    required ValueChanged<int> onChanged,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(5, (i) {
@@ -545,15 +636,17 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
     IconData locationIcon;
     switch (_locationSource) {
       case SpotLocationSource.currentLocation:
-        locationLabel = _lat != null && _lng != null
-            ? 'Mia posizione attuale: Lat ${_lat!.toStringAsFixed(4)}, Lng ${_lng!.toStringAsFixed(4)}'
-            : 'Posizione attuale non disponibile';
+        locationLabel =
+            _lat != null && _lng != null
+                ? 'Mia posizione attuale: Lat ${_lat!.toStringAsFixed(4)}, Lng ${_lng!.toStringAsFixed(4)}'
+                : 'Posizione attuale non disponibile';
         locationIcon = Icons.my_location;
         break;
       case SpotLocationSource.manual:
-        locationLabel = _lat != null && _lng != null
-            ? 'Posizione selezionata: Lat ${_lat!.toStringAsFixed(4)}, Lng ${_lng!.toStringAsFixed(4)}'
-            : 'Posizione non impostata';
+        locationLabel =
+            _lat != null && _lng != null
+                ? 'Posizione selezionata: Lat ${_lat!.toStringAsFixed(4)}, Lng ${_lng!.toStringAsFixed(4)}'
+                : 'Posizione non impostata';
         locationIcon = Icons.place;
         break;
       case SpotLocationSource.none:
@@ -562,10 +655,8 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
         break;
     }
 
-    final selectedServices = _services.entries
-        .where((e) => e.value)
-        .map((e) => e.key)
-        .toList();
+    final selectedServices =
+        _services.entries.where((e) => e.value).map((e) => e.key).toList();
 
     String servicesSummary;
     if (selectedServices.isEmpty) {
@@ -642,8 +733,11 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(locationIcon,
-                                        size: 16, color: Colors.white70),
+                                    Icon(
+                                      locationIcon,
+                                      size: 16,
+                                      color: Colors.white70,
+                                    ),
                                     const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
@@ -681,31 +775,32 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                         child: SizedBox(
                           height: 160,
                           width: double.infinity,
-                          child: _lat != null && _lng != null
-                              ? mb.MapWidget(
-                                  key: const ValueKey('add_spot_preview_map'),
-                                  cameraOptions: mb.CameraOptions(
-                                    center: mb.Point(
-                                      coordinates: mb.Position(_lng!, _lat!),
-                                    ),
-                                    zoom: 13.0,
-                                  ),
-                                  styleUri: mb.MapboxStyles.MAPBOX_STREETS,
-                                  onMapCreated: _onPreviewMapCreated,
-                                )
-                              : Container(
-                                  color: cardBg,
-                                  child: const Center(
-                                    child: Text(
-                                      "Imposta una posizione per vedere l'anteprima sulla mappa",
-                                      style: TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: 13,
+                          child:
+                              _lat != null && _lng != null
+                                  ? mb.MapWidget(
+                                    key: const ValueKey('add_spot_preview_map'),
+                                    cameraOptions: mb.CameraOptions(
+                                      center: mb.Point(
+                                        coordinates: mb.Position(_lng!, _lat!),
                                       ),
-                                      textAlign: TextAlign.center,
+                                      zoom: 13.0,
+                                    ),
+                                    styleUri: mb.MapboxStyles.MAPBOX_STREETS,
+                                    onMapCreated: _onPreviewMapCreated,
+                                  )
+                                  : Container(
+                                    color: cardBg,
+                                    child: const Center(
+                                      child: Text(
+                                        "Imposta una posizione per vedere l'anteprima sulla mappa",
+                                        style: TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 13,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
                                     ),
                                   ),
-                                ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -768,7 +863,10 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                       const SizedBox(height: 8),
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: cardBg,
                           borderRadius: BorderRadius.circular(16),
@@ -779,7 +877,10 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                             Expanded(
                               child: Text(
                                 'Quanto valuti questo spot?',
-                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                             _ratingStars(
@@ -822,8 +923,11 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.tune,
-                                  color: Colors.white70, size: 20),
+                              const Icon(
+                                Icons.tune,
+                                color: Colors.white70,
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -836,8 +940,11 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Icon(Icons.chevron_right,
-                                  color: Colors.white54, size: 20),
+                              const Icon(
+                                Icons.chevron_right,
+                                color: Colors.white54,
+                                size: 20,
+                              ),
                             ],
                           ),
                         ),
@@ -854,7 +961,9 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                                 child: Chip(
                                   backgroundColor: const Color(0xFF123426),
                                   labelPadding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 0),
+                                    horizontal: 6,
+                                    vertical: 0,
+                                  ),
                                   label: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -928,7 +1037,8 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: _photos.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                            separatorBuilder:
+                                (_, __) => const SizedBox(width: 8),
                             itemBuilder: (context, index) {
                               final file = File(_photos[index].path);
                               return ClipRRect(
@@ -993,23 +1103,25 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                     ),
                   ),
                   onPressed: _isSaving ? null : _submit,
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
+                  child:
+                      _isSaving
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                          : const Text(
+                            'Confirm & Submit',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        )
-                      : const Text(
-                          'Confirm & Submit',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                 ),
               ),
             ),
@@ -1097,8 +1209,12 @@ class _ServicesPickerSheetState extends State<_ServicesPickerSheet> {
             ),
           ),
           Padding(
-            padding:
-                const EdgeInsets.only(left: 16, right: 16, bottom: 16, top: 8),
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: 16,
+              top: 8,
+            ),
             child: Row(
               children: [
                 TextButton(
@@ -1108,7 +1224,9 @@ class _ServicesPickerSheetState extends State<_ServicesPickerSheet> {
                 const Spacer(),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).pop<Map<String, bool>>(_localServices);
+                    Navigator.of(
+                      context,
+                    ).pop<Map<String, bool>>(_localServices);
                   },
                   child: const Text('Salva'),
                 ),

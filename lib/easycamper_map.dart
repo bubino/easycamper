@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
@@ -210,22 +208,16 @@ class EasyCamperMapState extends State<EasyCamperMap> {
 
       final filters = widget.filtersBuilder();
 
-      List<SpotMarkerData> spots;
-      try {
-        spots = await widget.spotsApiClient.fetchSpotsForBBox(
-          latMin: latMin,
-          lngMin: lngMin,
-          latMax: latMax,
-          lngMax: lngMax,
-          types: filters.types,
-          services: filters.services,
-          minRating: filters.minRating,
-        );
-      } catch (e) {
-        // ignore: avoid_print
-        print('SPOTS DEBUG: backend fetch failed: $e');
-        spots = await _loadMockSpotsFromBundle(filters);
-      }
+      // ONLY REAL DATA: if backend fails (401/403/network/etc) we do NOT fallback to mock.
+      final spots = await widget.spotsApiClient.fetchSpotsForBBox(
+        latMin: latMin,
+        lngMin: lngMin,
+        latMax: latMax,
+        lngMax: lngMax,
+        types: filters.types,
+        services: filters.services,
+        minRating: filters.minRating,
+      );
 
       // ignore: avoid_print
       print(
@@ -247,54 +239,29 @@ class EasyCamperMapState extends State<EasyCamperMap> {
       await _renderSpotsOnMap();
       _lastRenderedSignature = sig;
       widget.onSpotsChanged(spots);
+    } catch (e) {
+      // Backend failed (often 401 token missing). Do not show mock data.
+      // ignore: avoid_print
+      print('SPOTS DEBUG: backend fetch failed (no mock fallback): $e');
+
+      if (!mounted) return;
+      if (token != _refreshToken) return;
+
+      if (_spots.isNotEmpty) {
+        setState(() {
+          _spots = [];
+        });
+        await _renderSpotsOnMap();
+        _lastRenderedSignature = null;
+      }
+      widget.onSpotsChanged(const []);
     } finally {
       _setLoading(false);
       _refreshInFlight = false;
     }
   }
 
-  Future<List<SpotMarkerData>> _loadMockSpotsFromBundle(
-    SpotFilters filters,
-  ) async {
-    final raw = await rootBundle.loadString('mock_data/spot.json');
-    final List<dynamic> jsonList = jsonDecode(raw) as List<dynamic>;
-
-    final allSpots = jsonList.map((e) {
-      final m = e as Map<String, dynamic>;
-      return SpotMarkerData(
-        id: m['id'] as String,
-        name: m['name'] as String,
-        latitude: (m['lat'] as num).toDouble(),
-        longitude: (m['lng'] as num).toDouble(),
-        shortDescription: m['description'] as String?,
-        type: m['type'] as String?,
-        services: (m['services'] as List<dynamic>?)?.map((s) => s.toString()).toList() ?? const [],
-        rating: (m['rating'] as num?)?.toDouble(),
-      );
-    }).toList();
-
-    return allSpots.where((s) {
-      // Tipo area
-      if (filters.types.isNotEmpty) {
-        final mappedType = _mapTipoAreaToBackend(filters.types);
-        if (s.type == null || !mappedType.contains(s.type)) {
-          return false;
-        }
-      }
-      // Servizi
-      if (filters.services.isNotEmpty) {
-        final setServizi = s.services.toSet();
-        final anyRequired = filters.services.any((req) => setServizi.contains(req));
-        if (!anyRequired) return false;
-      }
-      // Rating
-      if (filters.minRating != null && filters.minRating! > 0) {
-        final r = s.rating ?? 0;
-        if (r < filters.minRating!) return false;
-      }
-      return true;
-    }).toList();
-  }
+  // (Mock fallback removed: we only show real backend data.)
 
   Future<void> _renderSpotsOnMap() async {
     final mgr = _pointAnnoManager;
@@ -331,26 +298,6 @@ class EasyCamperMapState extends State<EasyCamperMap> {
         _annotationIdToSpot[id] = _spots[i];
       }
     }
-  }
-
-  List<String> _mapTipoAreaToBackend(List<String> tipiUi) {
-    final mapped = <String>[];
-    for (final t in tipiUi) {
-      switch (t) {
-        case 'Area di sosta':
-          mapped.add('area_sosta');
-          break;
-        case 'Campeggio':
-          mapped.add('campeggio');
-          break;
-        case 'Agricampeggio':
-          mapped.add('agricampeggio');
-          break;
-        default:
-          break;
-      }
-    }
-    return mapped;
   }
 
   @override

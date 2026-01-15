@@ -58,7 +58,8 @@ class SpotMarker extends StatelessWidget {
               type: spot.type ?? 'area_sosta',
               services: spot.services,
               rating: spot.rating ?? 0,
-              photos: const [],
+              // FIX: passa le foto dal marker, altrimenti nel dettaglio non si vedrà nulla
+              photos: spot.photos,
             );
             Navigator.of(context).push(
               MaterialPageRoute(

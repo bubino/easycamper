@@ -1,10 +1,9 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Importo la stessa base URL di default usata dall'autenticazione (device fisico).
-import 'auth_state.dart';
+import 'http_client.dart';
 
 /// DTO per i modelli di veicolo restituiti da /api/vehicle-models
 class VehicleModelDto {
@@ -57,9 +56,12 @@ class VehicleModelDto {
 /// Client semplice per /api/vehicle-models.
 /// In futuro possiamo centralizzare la baseUrl (es. da env/config), per ora usiamo localhost:5000.
 class VehicleModelsApi {
-  VehicleModelsApi({http.Client? client, String? baseUrl})
-      : _client = client ?? http.Client(),
-        _baseUrl = baseUrl ?? _resolveBaseUrlFromEnv();
+  final ProviderRefBase ref;
+  final ApiHttpClient _http;
+
+  VehicleModelsApi({required ProviderRefBase ref, ApiHttpClient? httpClient, String? baseUrl})
+      : ref = ref,
+        _http = httpClient ?? ApiHttpClient(baseUrl: baseUrl ?? _resolveBaseUrlFromEnv(), ref: ref);
 
   static String _resolveBaseUrlFromEnv() {
     try {
@@ -69,13 +71,9 @@ class VehicleModelsApi {
       // ignore
     }
 
-    // Su device fisico iOS/Android 127.0.0.1 punta al device, non al Mac.
-    // Allineiamo al backend usato per auth.
-    return kAuthBaseUrl;
+    // fallback: se non configurato, usa il default dell'app (vedi ApiHttpClient)
+    return dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';
   }
-
-  final http.Client _client;
-  final String _baseUrl;
 
   Future<List<VehicleModelDto>> searchVehicleModels({
     String? search,
@@ -83,21 +81,26 @@ class VehicleModelsApi {
     int limit = 20,
     int offset = 0,
   }) async {
-    final uri = Uri.parse('$_baseUrl/api/vehicle-models').replace(
+    final res = await _http.get<dynamic>(
+      '/api/vehicle-models',
+      authenticated: false,
       queryParameters: {
         if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
         if (brand != null && brand.trim().isNotEmpty) 'brand': brand.trim(),
-        'limit': limit.toString(),
-        'offset': offset.toString(),
+        'limit': limit,
+        'offset': offset,
       },
     );
 
-    final res = await _client.get(uri);
     if (res.statusCode != 200) {
-      throw Exception('Errore ${res.statusCode} nel caricamento dei modelli veicolo');
+      throw Exception(
+        'Errore ${res.statusCode} nel caricamento dei modelli veicolo',
+      );
     }
 
-    final Map<String, dynamic> body = json.decode(res.body) as Map<String, dynamic>;
+    final Map<String, dynamic> body = (res.data is Map)
+        ? Map<String, dynamic>.from(res.data as Map)
+        : json.decode(res.data?.toString() ?? '{}') as Map<String, dynamic>;
     final List<dynamic> data = body['data'] as List<dynamic>? ?? const [];
     return data.map((e) => VehicleModelDto.fromJson(e as Map<String, dynamic>)).toList();
   }
