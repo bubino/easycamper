@@ -51,17 +51,19 @@
 
 - [x] Scheda POI (dettaglio spot)
   - [x] Visualizzare scheda dettaglio spot con titolo, descrizione, servizi (Amenities) e sezione Reviews
-  - [x] Aggiungere schermata `SpotReviewsScreen` con elenco mock di recensioni accessibile da "Vedi tutte le recensioni"
+  - [x] Aggiungere schermata `SpotReviewsScreen` con elenco recensioni da backend (con fallback/mock dove necessario)
   - [x] Aggiungere azioni **Modifica/Elimina** (menu ⋮) **solo per spot creati dall’utente** (UX minimale, conferma delete + form edit base)
   - [ ] Ownership reale: far restituire dal backend `userId`/`ownerId` in `GET /spots` e `GET /spots/:id` e mappare in `SpotDto` per abilitare correttamente Modifica/Elimina (senza euristiche client)
   - [ ] Estendere la modifica spot: supportare anche tipo, servizi e posizione (oltre a nome/descrizione)
-  - [ ] Collegare il rating medio e il conteggio recensioni a dati reali da backend (`/spots/:id` + `/spots/:id/reviews`), sostituendo valori mock (`124 reviews`, percentuali 5★/4★/3★)
+  - [ ] Collegare il rating medio e il conteggio recensioni a dati reali da backend (`/spots/:id` + `/spots/:id/reviews`), sostituendo valori mock residui
 
 - [x] Gestione foto spot / POI
   - [x] Decidere soluzione storage per le foto (S3 compatibile: Cloudflare R2)
-  - [x] Definire API upload immagini (app → server → storage) e modello dati foto spot/review
-  - [x] Collegare `AddSpotScreen` all'upload reale delle foto selezionate, con anteprime e gestione errori
+  - [x] Definire API upload file (route `POST /api/uploads`) e integrazione storage S3-compatible (Cloudflare R2)
+  - [x] Supporto foto su spot: salvataggio e lettura lista foto nello spot (DTO + UI dettaglio + preview in mappa)
+  - [x] Supporto foto su recensioni: migration + model `SpotReview` con campo foto e gestione in route spots
   - [x] Aggiornare configurazione env per URL pubblici Cloudflare R2 (`S3_PUBLIC_BASE_URL`)
+  - [ ] Collegare creazione spot (`POST /spots`) al salvataggio delle foto selezionate in `AddSpotScreen` (a oggi: upload presente, ma creazione spot con foto non ancora completata)
 
 - [ ] Schermata inserimento spot (AddSpotScreen)
   - [x] Creare schermata `AddSpotScreen` con layout ispirato al mock Figma: titolo, hero mappa/posizione (placeholder), descrizione, sezione amenities a card e sezione photos
