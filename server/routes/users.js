@@ -4,6 +4,7 @@ const router  = express.Router();
 const { User, AuditLog } = require('../models');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const { getUploadUrl, getDownloadUrl, remove: removeObject, exists: storageExists } = require('../services/fileStorage');
 
 // Funzione helper per rimuovere campi sensibili dall'oggetto utente prima di rispondere
 function sanitizeUser(userInstance) {
@@ -244,6 +245,105 @@ router.post('/:id/change-email', sensitiveLimiter, async (req, res, next) => {
     res.json({ message: 'Richiesta cambio email ricevuta. Controlla la nuova casella per confermare.' });
   } catch (err) {
     next(err);
+  }
+});
+
+// --- Avatar (privato, GDPR-friendly) --------------------------------------
+// POST /users/me/avatar/presigned-upload
+router.post('/me/avatar/presigned-upload', async (req, res, next) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) return res.status(401).json({ error: 'Utente non autenticato' });
+
+    const key = `users/${userId}/avatar/${Date.now()}.jpg`;
+    const url = await getUploadUrl(key, 300);
+    return res.json({ key, url });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// POST /users/me/avatar/confirm
+router.post('/me/avatar/confirm', async (req, res, next) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) return res.status(401).json({ error: 'Utente non autenticato' });
+
+    const key = String(req.body?.key || '').trim();
+    if (!key) return res.status(400).json({ error: 'key mancante' });
+
+    // Hardening: enforce key namespace for the current user
+    const expectedPrefix = `users/${userId}/avatar/`;
+    if (!key.startsWith(expectedPrefix)) {
+      return res.status(400).json({ error: 'key non valida' });
+    }
+
+    const ok = await storageExists(key);
+    if (!ok) {
+      return res.status(400).json({ error: 'Oggetto non trovato nello storage' });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ error: 'Utente non trovato' });
+
+    const prevKey = user.avatarKey;
+    user.avatarKey = key;
+    await user.save();
+
+    // Best effort cleanup of previous avatar
+    if (prevKey && prevKey !== key) {
+      try {
+        await removeObject(prevKey);
+      } catch (_) {}
+    }
+
+    return res.json({ avatarKey: user.avatarKey });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// GET /users/me/avatar/presigned-download
+router.get('/me/avatar/presigned-download', async (req, res, next) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) return res.status(401).json({ error: 'Utente non autenticato' });
+
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ error: 'Utente non trovato' });
+
+    const key = user.avatarKey;
+    if (!key) return res.status(404).json({ error: 'Avatar non impostato' });
+
+    const url = await getDownloadUrl(key, 120);
+    return res.json({ url });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// DELETE /users/me/avatar
+router.delete('/me/avatar', async (req, res, next) => {
+  try {
+    const userId = req.user && req.user.id;
+    if (!userId) return res.status(401).json({ error: 'Utente non autenticato' });
+
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ error: 'Utente non trovato' });
+
+    const key = user.avatarKey;
+    if (key) {
+      try {
+        await removeObject(key);
+      } catch (_) {}
+    }
+
+    user.avatarKey = null;
+    await user.save();
+
+    return res.sendStatus(204);
+  } catch (err) {
+    return next(err);
   }
 });
 

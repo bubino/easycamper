@@ -197,6 +197,29 @@ function getPublicUrl(key) {
   return `${base}/${safeKey}`;
 }
 
+/**
+ * Verifica se un oggetto esiste nello storage.
+ * In test usa lo stub in-memory.
+ * @param {string} key
+ * @returns {Promise<boolean>}
+ */
+async function exists(key) {
+  const k = String(key || '').trim();
+  if (!k) return false;
+
+  if (isTest) {
+    return Boolean(_testStorage[k]);
+  }
+
+  try {
+    await ensureBucket();
+    await client.statObject(BUCKET, k);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 module.exports = {
   upload,
   download,
@@ -204,4 +227,5 @@ module.exports = {
   getUploadUrl,
   getDownloadUrl,
   getPublicUrl,
+  exists,
 };
