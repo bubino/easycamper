@@ -85,19 +85,11 @@
   - [ ] Centralizzare bootstrap DB per i test in `server/jest.setup.js` (una sola init + `sequelize.sync({ force: true })` quando serve)
   - [ ] Rendere i test idempotenti: cleanup sicuro anche se `beforeAll` fallisce (evitare `where: { id: undefined }`)
   - [x] Eliminare flakiness dovuta a inizializzazioni multiple dei modelli/Sequelize (caricamento dei modelli una volta, evitare side effect a import-time)
-  - [ ] Fix query cross-dialect (SQLite vs Postgres), es. sostituire `ILIKE` con strategia compatibile (`LIKE` + `lower()` o condizionale sul dialect)
+  - [ ] Fix query cross-dialect (SQLite vs Postgres): rimuovere `Op.iLike` (Postgres-only) in `/api/vehicle-models` e usare strategia compatibile (es. `lower(col) LIKE lower(:q)` con `Sequelize.fn`) oppure condizionale per dialect
   - [ ] Allineare configurazioni `server/config/config.js` e `server/config/config.json` (evitare doppie fonti divergenti)
   - [x] Definire modalità E2E: SQLite file-based oppure Postgres via `server/docker-compose.test.yml` (documentare e automatizzare)
   - [x] Supportare run test su Postgres anche senza `DATABASE_URL` (fallback a config quando `TEST_DB=postgres`)
   - [x] Fix script `cleanupRefreshTokens.js` + test (unit/E2E) per pulizia token scaduti deterministica
-
-- [x] Backend: Spots API (CRUD minimo)
-  - [x] Aggiunte route mancanti: `PUT /spots/:id` e `DELETE /spots/:id` (owner-only + validazione UUID)
-  - [x] Reviews: CRUD minimo (`GET /spots/:id/reviews`, `POST /spots/:id/reviews`, `DELETE /spots/:id/reviews/:reviewId`) + ratingAverage/ratingCount ricalcolati
-  - [x] Upload: route dedicata `POST /api/uploads` + presigned URL (spot/review) + public URL helper
-
-> Nota: alcuni test (es. cleanup dei refresh token) usano volontariamente SQLite su file per isolare lo scenario e renderlo deterministico.
-> La suite può comunque essere eseguita tutta su Postgres con `TEST_DB=postgres`.
 
 - [ ] Backend: Avatar utente privato (GDPR-friendly)
   - [ ] Aggiungere campo `avatar_key` (nullable) su `User`
