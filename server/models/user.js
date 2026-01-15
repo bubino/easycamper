@@ -53,7 +53,12 @@ module.exports = (sequelize, DataTypes) => {
     emailChangeRequestedAt: {
       type: DataTypes.DATE,
       allowNull: true
-    }
+    },
+    avatarKey: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'avatar_key',
+    },
   }, {
     sequelize,
     modelName: 'User',
