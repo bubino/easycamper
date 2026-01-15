@@ -15,7 +15,8 @@
 - [ ] Mappa: completare filtri e card spot
   - [ ] Estendere `mock_data/spot.json` con `services` e `rating` coerenti con il pannello filtri
   - [ ] Applicare filtri `services` e `rating` anche sui mock (desktop e fallback mobile)
-  - [ ] Arricchire la card bassa spot con tipo area, rating (stelline) e 2–3 icone servizi principali
+  - [x] Arricchire la card bassa spot con tipo area, rating (stelline) e 2–3 icone servizi principali
+  - [x] Preview foto nella card bassa spot (stile Park4Night) con prefetch dettagli spot e cache in-memory
 
 - [ ] Schermata Profilo utente
   - [x] Mostrare email utente letta da `AuthState` (session.email) in `ProfileScreen`
@@ -56,10 +57,11 @@
   - [ ] Estendere la modifica spot: supportare anche tipo, servizi e posizione (oltre a nome/descrizione)
   - [ ] Collegare il rating medio e il conteggio recensioni a dati reali da backend (`/spots/:id` + `/spots/:id/reviews`), sostituendo valori mock (`124 reviews`, percentuali 5★/4★/3★)
 
-- [ ] Gestione foto spot / POI
-  - [ ] Decidere soluzione storage per le foto (es. S3 compatibile, MinIO, Firebase Storage) e configurare bucket/spazio dedicato
-  - [ ] Definire API upload immagini (diretto app → server → storage oppure pre-signed URL) e modello dati foto spot (`/spots/:id/photos`)
-  - [ ] Collegare `AddSpotScreen` all'upload reale delle foto selezionate (invece del mock attuale), con anteprime e gestione errori
+- [x] Gestione foto spot / POI
+  - [x] Decidere soluzione storage per le foto (S3 compatibile: Cloudflare R2)
+  - [x] Definire API upload immagini (app → server → storage) e modello dati foto spot/review
+  - [x] Collegare `AddSpotScreen` all'upload reale delle foto selezionate, con anteprime e gestione errori
+  - [x] Aggiornare configurazione env per URL pubblici Cloudflare R2 (`S3_PUBLIC_BASE_URL`)
 
 - [ ] Schermata inserimento spot (AddSpotScreen)
   - [x] Creare schermata `AddSpotScreen` con layout ispirato al mock Figma: titolo, hero mappa/posizione (placeholder), descrizione, sezione amenities a card e sezione photos
@@ -89,6 +91,8 @@
 
 - [x] Backend: Spots API (CRUD minimo)
   - [x] Aggiunte route mancanti: `PUT /spots/:id` e `DELETE /spots/:id` (owner-only + validazione UUID)
+  - [x] Upload: route dedicata `POST /api/uploads` per caricare file su storage S3-compatible (Cloudflare R2)
+  - [x] Reviews: supporto a foto recensioni (migration + modello + aggiornamento route spots)
 
 > Nota: alcuni test (es. cleanup dei refresh token) usano volontariamente SQLite su file per isolare lo scenario e renderlo deterministico.
 > La suite può comunque essere eseguita tutta su Postgres con `TEST_DB=postgres`.
