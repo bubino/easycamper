@@ -51,7 +51,7 @@
 
 - [x] Scheda POI (dettaglio spot)
   - [x] Visualizzare scheda dettaglio spot con titolo, descrizione, servizi (Amenities) e sezione Reviews
-  - [x] Aggiungere schermata `SpotReviewsScreen` con elenco recensioni da backend (con fallback/mock dove necessario)
+  - [x] Aggiungere schermata `SpotReviewsScreen` con elenco recensioni da backend
   - [x] Aggiungere azioni **Modifica/Elimina** (menu ⋮) **solo per spot creati dall’utente** (UX minimale, conferma delete + form edit base)
   - [ ] Ownership reale: far restituire dal backend `userId`/`ownerId` in `GET /spots` e `GET /spots/:id` e mappare in `SpotDto` per abilitare correttamente Modifica/Elimina (senza euristiche client)
   - [ ] Estendere la modifica spot: supportare anche tipo, servizi e posizione (oltre a nome/descrizione)
@@ -63,16 +63,16 @@
   - [x] Supporto foto su spot: salvataggio e lettura lista foto nello spot (DTO + UI dettaglio + preview in mappa)
   - [x] Supporto foto su recensioni: migration + model `SpotReview` con campo foto e gestione in route spots
   - [x] Aggiornare configurazione env per URL pubblici Cloudflare R2 (`S3_PUBLIC_BASE_URL`)
-  - [ ] Collegare creazione spot (`POST /spots`) al salvataggio delle foto selezionate in `AddSpotScreen` (a oggi: upload presente, ma creazione spot con foto non ancora completata)
+  - [x] Collegare creazione spot (`POST /spots`) al salvataggio delle foto selezionate in `AddSpotScreen` (presigned PUT → public URL → commit su spot)
 
-- [ ] Schermata inserimento spot (AddSpotScreen)
+- [x] Schermata inserimento spot (AddSpotScreen)
   - [x] Creare schermata `AddSpotScreen` con layout ispirato al mock Figma: titolo, hero mappa/posizione (placeholder), descrizione, sezione amenities a card e sezione photos
   - [x] Collegare il pulsante "Aggiungi spot" sulla mappa all'apertura di `AddSpotScreen`
   - [x] Gestire selezione servizi con lista completa in bottom sheet + pilloline di riepilogo sulla schermata principale
   - [x] Gestire selezione posizione in modalità mock: "Usa mia posizione (mock)" + "Scegli sulla mappa (mock)" con coordinate predefinite
-  - [ ] Integrare anteprima mappa/posizione reale: usare posizione corrente (GPS) o tap sulla mappa per settare lat/lng dello spot
-  - [ ] Definire payload `POST /spots` (inclusi lat/lng, tipo, servizi, foto) e relativa route backend
-  - [ ] Collegare `AddSpotScreen` al backend (`POST /spots`) e ricaricare i POI sulla mappa dopo inserimento riuscito
+  - [x] Integrare anteprima mappa/posizione reale: usare posizione corrente (GPS) o tap sulla mappa per settare lat/lng dello spot
+  - [x] Definire payload `POST /spots` (inclusi lat/lng, tipo, servizi, foto) e relativa route backend
+  - [x] Collegare `AddSpotScreen` al backend (`POST /spots`) e ricaricare i POI sulla mappa dopo inserimento riuscito
 
 - [ ] Backend: stabilizzare infrastruttura test (Jest + Sequelize)
   - [ ] Verificare e documentare DB usato in produzione vs test (Postgres in produzione, SQLite in test) e motivazioni
@@ -93,8 +93,8 @@
 
 - [x] Backend: Spots API (CRUD minimo)
   - [x] Aggiunte route mancanti: `PUT /spots/:id` e `DELETE /spots/:id` (owner-only + validazione UUID)
-  - [x] Upload: route dedicata `POST /api/uploads` per caricare file su storage S3-compatible (Cloudflare R2)
-  - [x] Reviews: supporto a foto recensioni (migration + modello + aggiornamento route spots)
+  - [x] Reviews: CRUD minimo (`GET /spots/:id/reviews`, `POST /spots/:id/reviews`, `DELETE /spots/:id/reviews/:reviewId`) + ratingAverage/ratingCount ricalcolati
+  - [x] Upload: route dedicata `POST /api/uploads` + presigned URL (spot/review) + public URL helper
 
 > Nota: alcuni test (es. cleanup dei refresh token) usano volontariamente SQLite su file per isolare lo scenario e renderlo deterministico.
 > La suite può comunque essere eseguita tutta su Postgres con `TEST_DB=postgres`.
