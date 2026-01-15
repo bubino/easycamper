@@ -11,28 +11,16 @@ let sequelize;
 /*───────────────────────────────────────────────────────────────
   1. Dialetto
 ───────────────────────────────────────────────────────────────*/
-if ((env === 'test' || env === 'e2e') && (process.env.TEST_DB === 'postgres' || process.env.DATABASE_URL)) {
-  // Test/E2E against Postgres (recommended for production fidelity)
+if (env === 'test' || env === 'e2e') {
+  // In test/e2e usiamo SOLO Postgres (docker-compose.test.yml o DATABASE_URL)
   const url = process.env.DATABASE_URL;
-  if (url) {
-    sequelize = new Sequelize(url, {
-      dialect: 'postgres',
-      logging: false,
-    });
-  } else {
-    // Fall back to config-based connection when DATABASE_URL is not provided
-    sequelize = new Sequelize(
-      config.database,
-      config.username,
-      config.password,
-      { ...config, dialect: 'postgres', logging: false },
+  if (!url) {
+    throw new Error(
+      'DATABASE_URL mancante in test/e2e. Avvia Postgres con server/docker-compose.test.yml oppure imposta DATABASE_URL.'
     );
   }
-} else if (env === 'test' || env === 'e2e') {
-  // SQLite in-memory per test unitari, oppure su file per E2E
-  sequelize = new Sequelize({
-    dialect: 'sqlite',
-    storage: process.env.SQLITE_STORAGE || ':memory:',
+  sequelize = new Sequelize(url, {
+    dialect: 'postgres',
     logging: false,
   });
 } else if (process.env.DATABASE_URL) {

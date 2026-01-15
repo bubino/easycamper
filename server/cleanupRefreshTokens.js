@@ -2,7 +2,7 @@
 const { DataTypes, Op } = require('sequelize');
 
 // Use the same sequelize instance/configuration as the app/tests.
-// This ensures TEST_DB=postgres and SQLITE_STORAGE are respected.
+// Tests are Postgres-only (docker-compose.test.yml).
 const { sequelize } = require('./models');
 
 // Load only the RefreshToken model onto the shared sequelize instance.

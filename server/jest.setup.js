@@ -22,13 +22,10 @@ global.fetch.mockImplementation(async () => ({
 }));
 
 // --- DB bootstrap per test ---
-// Scelta critica: per coerenza con produzione usiamo Postgres anche nei test.
-// Per usare SQLite (più veloce) impostare esplicitamente TEST_DB=sqlite.
+// Decisione progetto: per coerenza con produzione usiamo Postgres anche nei test.
 if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'e2e') {
-  if (!process.env.TEST_DB) process.env.TEST_DB = 'postgres';
-
-  if (process.env.TEST_DB === 'postgres' && !process.env.DATABASE_URL) {
-    // Default per docker-compose.test.yml
+  // Default per docker-compose.test.yml
+  if (!process.env.DATABASE_URL) {
     process.env.DATABASE_URL =
       process.env.TEST_DATABASE_URL ||
       'postgres://easycamper:secret123@127.0.0.1:5433/easycamper_test';

@@ -14,17 +14,25 @@ module.exports = {
   },
 
   // ----------- ambiente di test (Jest) -----------------------------------
-  // usiamo SQLite in-memory per evitare di dover avviare Postgres durante i test
+  // Decisione progetto: test su Postgres (docker-compose.test.yml).
   test: {
-    dialect:  'sqlite',
-    storage:  ':memory:',
+    username: process.env.POSTGRES_USER     || 'easycamper',
+    password: process.env.POSTGRES_PASSWORD || 'secret123',
+    database: process.env.POSTGRES_DB       || 'easycamper_test',
+    host:     process.env.POSTGRES_HOST     || '127.0.0.1',
+    port:     process.env.POSTGRES_PORT     || 5433,
+    dialect:  'postgres',
     logging:  false
   },
 
   // ----------- ambiente di test end-to-end (E2E) --------------------------
   e2e: {
-    dialect:  'sqlite',
-    storage:  process.env.SQLITE_STORAGE || ':memory:',
+    username: process.env.POSTGRES_USER     || 'easycamper',
+    password: process.env.POSTGRES_PASSWORD || 'secret123',
+    database: process.env.POSTGRES_DB       || 'easycamper_test',
+    host:     process.env.POSTGRES_HOST     || '127.0.0.1',
+    port:     process.env.POSTGRES_PORT     || 5433,
+    dialect:  'postgres',
     logging:  false
   },
 
